@@ -60,10 +60,20 @@ static const char *TAG = "riddle";
 #define BY_MAX          16
 #define LOW_WATER       7      // refetch when fewer than this remain unseen
 
-// Published as a release asset, deliberately not from the private repo: a
-// private raw URL needs a PAT in flash, and a public repo would expose the
-// kids' names in `by`. Nicknames only, birthdays stay in NVS. (CEO review 8A.)
-#define RIDDLE_URL    "https://github.com/navotvolkgroundup/esp32-s3-epaper-397" \
+// A PUBLIC release asset, so the firmware carries no credential of any kind.
+//
+// This originally pointed at the private notes repo, which was wrong: release
+// assets on a private repo need auth just as much as a raw file does, so the
+// fetch would have 404'd and the only symptom would have been a queue that
+// never refreshed. The whole point of 8A was to avoid a token in flash.
+//
+// Publishing the batch is safe because it holds no personal data. The schema
+// has a `by` field for crediting an author, and entries using it must carry a
+// nickname -- names and birthdays live in device NVS and never leave the house.
+//
+// Verified fetchable unauthenticated: HTTP 200, 6790 bytes, sha256 matching
+// the local file.
+#define RIDDLE_URL    "https://github.com/navotvolkgroundup/ESP32-S3-ePaper-3.97" \
                       "/releases/download/riddles-latest/riddles.json"
 #define PATH_SPIFFS   "/spiffs/riddles.json"
 #define PATH_TMP      "/spiffs/riddles.tmp"
