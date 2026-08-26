@@ -14,6 +14,7 @@
 #include "riddle_decide.h"
 #include "wake_log.h"
 #include "kids.h"
+#include "weather.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -433,6 +434,117 @@ static int test_kids_callout(void)
     return 0;
 }
 
+// ---------------------------------------------------------------- weather ---
+//
+// The fixture is a REAL open-meteo response captured on 2026-08-26, not a
+// hand-written one. Hand-written fixtures encode what you believe the API
+// returns; captured ones encode what it actually returns.
+static const char *OM_REAL =
+"{\"latitude\":32.0625,\"longitude\":34.8125,\"generationtime_ms\":0.089,"
+"\"utc_offset_seconds\":10800,\"timezone\":\"Asia/Jerusalem\","
+"\"timezone_abbreviation\":\"GMT+3\",\"elevation\":16.0,"
+"\"current_units\":{\"time\":\"iso8601\",\"interval\":\"seconds\","
+"\"temperature_2m\":\"°C\",\"weather_code\":\"wmo code\"},"
+"\"current\":{\"time\":\"2026-08-26T23:00\",\"interval\":900,"
+"\"temperature_2m\":26.6,\"weather_code\":0},"
+"\"daily_units\":{\"time\":\"iso8601\",\"temperature_2m_max\":\"°C\","
+"\"temperature_2m_min\":\"°C\",\"weather_code\":\"wmo code\"},"
+"\"daily\":{\"time\":[\"2026-08-26\"],\"temperature_2m_max\":[31.9],"
+"\"temperature_2m_min\":[23.7],\"weather_code\":[2]}}";
+
+static int test_weather_parse(void)
+{
+    weather_t w;
+    memset(&w, 0xAA, sizeof w);
+    CHECK(weather_parse(OM_REAL, &w));
+    CHECK(w.temp_x10 == 266);          // 26.6C
+    CHECK(w.hi_x10   == 319);
+    CHECK(w.lo_x10   == 237);
+    CHECK(w.wmo      == 0);
+    CHECK(w.fetched_at == 0);          // caller stamps this, not the parser
+
+    // Garbage must not clobber a good cached reading.
+    weather_t good = w;
+    CHECK(!weather_parse("{ not json", &good));
+    CHECK(good.temp_x10 == 266);
+    CHECK(!weather_parse("{}", &good));
+    CHECK(good.temp_x10 == 266);
+    CHECK(!weather_parse(NULL, &good));
+    CHECK(good.temp_x10 == 266);
+
+    // A current block with no daily block is still usable.
+    weather_t p;
+    memset(&p, 0, sizeof p);
+    CHECK(weather_parse("{\"current\":{\"temperature_2m\":-3.55,"
+                        "\"weather_code\":71}}", &p));
+    CHECK(p.wmo == 71);
+    // Rounding half away from zero: a truncating cast would give -35 and put
+    // the board a whole tenth warm on a freezing morning.
+    CHECK(p.lo_x10 == 0 && p.hi_x10 == 0);
+    CHECK(p.temp_x10 == -36);
+
+    // open-meteo emits null in a daily array when a value is unavailable.
+    weather_t n;
+    memset(&n, 0, sizeof n);
+    CHECK(weather_parse("{\"current\":{\"temperature_2m\":5,\"weather_code\":3},"
+                        "\"daily\":{\"temperature_2m_max\":[null],"
+                        "\"temperature_2m_min\":[]}}", &n));
+    CHECK(n.temp_x10 == 50 && n.hi_x10 == 0 && n.lo_x10 == 0);
+    return 0;
+}
+
+static int test_weather_icons(void)
+{
+    // Every icon named here must exist in page_weather/Weather_img, including
+    // leiyu, which only exists because the lieyu transposition was fixed.
+    CHECK(strcmp(wmo_icon(0),  "qin")    == 0);
+    CHECK(strcmp(wmo_icon(2),  "duoyun") == 0);
+    CHECK(strcmp(wmo_icon(3),  "yin")    == 0);
+    CHECK(strcmp(wmo_icon(48), "wumai")  == 0);
+    CHECK(strcmp(wmo_icon(61), "xiaoyu") == 0);
+    CHECK(strcmp(wmo_icon(63), "zhongyu")== 0);
+    CHECK(strcmp(wmo_icon(65), "dayu")   == 0);
+    CHECK(strcmp(wmo_icon(82), "baoyu")  == 0);
+    CHECK(strcmp(wmo_icon(75), "xiaxue") == 0);
+    CHECK(strcmp(wmo_icon(95), "leiyu")  == 0);
+    CHECK(strcmp(wmo_icon(99), "leiyu")  == 0);
+
+    // Unknown codes fall back to a plausible cloud, never to nothing. WMO adds
+    // codes and this board is not casually reflashable.
+    CHECK(strcmp(wmo_icon(7),     "duoyun") == 0);
+    CHECK(strcmp(wmo_icon(65535), "duoyun") == 0);
+    for (uint32_t c = 0; c <= 120; c++) CHECK(wmo_icon((uint16_t)c) != NULL);
+    CHECK(strcmp(wmo_label(0), "clear") == 0);
+    CHECK(strcmp(wmo_label(7), "?")     == 0);
+    return 0;
+}
+
+static int test_weather_staleness(void)
+{
+    weather_t w;
+    memset(&w, 0, sizeof w);
+
+    CHECK(weather_is_stale(&w, 1000));            // never fetched
+    CHECK(weather_is_stale(NULL, 1000));
+
+    // The two intervals that actually occur, and the threshold sits between.
+    w.fetched_at = 100000;
+    CHECK(!weather_is_stale(&w, 100000 + 1));
+    CHECK(!weather_is_stale(&w, 100000 + (uint32_t)(9.5 * 3600)));  // 06:30 -> 16:00
+    CHECK(weather_is_stale(&w, 100000 + 24 * 3600));                // next morning, fetch failed
+    CHECK(!weather_is_stale(&w, 100000 + WEATHER_STALE_SECS));      // boundary is inclusive
+    CHECK(weather_is_stale(&w, 100000 + WEATHER_STALE_SECS + 1));
+
+    // A clock that moved backwards means one of the two values is wrong and
+    // there is no telling which, so it must not be presented as current. Note
+    // this case is ALSO satisfied by unsigned underflow in the subtraction, so
+    // this assertion does not distinguish the explicit guard from its absence;
+    // the guard is kept for intent, not behaviour. See weather.c.
+    CHECK(weather_is_stale(&w, 99999));
+    CHECK(weather_is_stale(&w, 0));
+    return 0;
+}
+
 int main(void)
 {
     struct { const char *name; int (*fn)(void); } tests[] = {
@@ -445,6 +557,9 @@ int main(void)
         { "kids_empty",      test_kids_empty },
         { "kids_birthday",   test_kids_birthday },
         { "kids_callout",    test_kids_callout },
+        { "weather_parse",     test_weather_parse },
+        { "weather_icons",     test_weather_icons },
+        { "weather_staleness", test_weather_staleness },
     };
     for (unsigned i = 0; i < sizeof tests / sizeof tests[0]; i++) {
         if (tests[i].fn()) {

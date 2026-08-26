@@ -10,35 +10,60 @@ CC      ?= cc
 CFLAGS  ?= -std=c99 -Wall -Wextra -Werror -O1 -g
 BUILD   := build-host
 
-.PHONY: test clean
-test: $(BUILD)/run_tests $(BUILD)/link_check
+.PHONY: test clean icons
+test: $(BUILD)/run_tests $(BUILD)/link_check icons
 	@$(BUILD)/link_check
 	@$(BUILD)/run_tests
 
-SRC := tests/run_tests.c main/page_riddle/riddle_decide.c main/page_riddle/wake_log.c main/page_riddle/kids.c
-HDR := main/page_riddle/riddle_decide.h main/page_riddle/wake_log.h main/page_riddle/kids.h
+# Cross-artifact check: every icon stem wmo_icon() can return must exist as a
+# bitmap. A unit test cannot catch this -- it asserts the STRING is "leiyu",
+# not that leiyu.bmp ships -- and the failure is a silently blank zone on the
+# panel. Cheap enough to run on every `make test`.
+icons:
+	@missing=0; \
+	for n in $$(sed -n '/^const char \*wmo_icon/,/^}/p' main/page_riddle/weather.c \
+	            | grep -oE 'return "[a-z]+";' | sed 's/return "//;s/";//' | sort -u); do \
+	  if [ ! -f "main/page_weather/Weather_img/$$n.bmp" ]; then \
+	    echo "MISSING ICON: $$n.bmp referenced by wmo_icon()"; missing=1; \
+	  fi; \
+	done; \
+	[ $$missing -eq 0 ] && echo "icon check OK: every wmo_icon() name has a bitmap"
+
+# cJSON comes from the IDF checkout but is a vendored library, not IDF itself,
+# so weather.c stays host-compilable and its PARSING is testable, not just the
+# arithmetic around it.
+CJSON_DIR ?= $(HOME)/esp/esp-idf/components/json/cJSON
+
+SRC := tests/run_tests.c main/page_riddle/riddle_decide.c main/page_riddle/wake_log.c \
+       main/page_riddle/kids.c main/page_riddle/weather.c $(CJSON_DIR)/cJSON.c
+HDR := main/page_riddle/riddle_decide.h main/page_riddle/wake_log.h \
+       main/page_riddle/kids.h main/page_riddle/weather.h
 
 $(BUILD)/run_tests: $(SRC) $(HDR) | $(BUILD)
-	$(CC) $(CFLAGS) -Imain/page_riddle -o $@ $(SRC)
+	$(CC) $(CFLAGS) -Imain/page_riddle -I$(CJSON_DIR) -o $@ $(SRC) -lm
 
 # C++ linkage guard. The firmware's --gc-sections hides undefined references
 # in any module app_main does not call yet, so a missing extern "C" in a pure
 # unit's header survives a clean `idf.py build`. This catches it in a second.
 CXX     ?= c++
 PURE    := main/page_riddle/riddle_decide.c main/page_riddle/wake_log.c \
-           main/page_riddle/kids.c
+           main/page_riddle/kids.c main/page_riddle/weather.c
 
 # The .c files must be compiled AS C (cc), then linked with the C++ object.
 # Letting c++ compile them would make everything C++ and mask the very
 # mismatch this target exists to find.
-PURE_O  := $(BUILD)/riddle_decide.o $(BUILD)/wake_log.o $(BUILD)/kids.o
+PURE_O  := $(BUILD)/riddle_decide.o $(BUILD)/wake_log.o $(BUILD)/kids.o \
+           $(BUILD)/weather.o $(BUILD)/cJSON.o
 
 $(BUILD)/%.o: main/page_riddle/%.c $(HDR) | $(BUILD)
-	$(CC) $(CFLAGS) -Imain/page_riddle -c -o $@ $<
+	$(CC) $(CFLAGS) -Imain/page_riddle -I$(CJSON_DIR) -c -o $@ $<
+
+$(BUILD)/cJSON.o: $(CJSON_DIR)/cJSON.c | $(BUILD)
+	$(CC) -std=c99 -O1 -I$(CJSON_DIR) -c -o $@ $<
 
 $(BUILD)/link_check: tests/link_check.cc $(PURE_O) $(HDR) | $(BUILD)
-	$(CXX) -std=c++17 -Wall -Wextra -Werror -O1 -Imain/page_riddle -o $@ \
-	    tests/link_check.cc $(PURE_O)
+	$(CXX) -std=c++17 -Wall -Wextra -Werror -O1 -Imain/page_riddle -I$(CJSON_DIR) \
+	    -o $@ tests/link_check.cc $(PURE_O) -lm
 
 $(BUILD):
 	@mkdir -p $(BUILD)

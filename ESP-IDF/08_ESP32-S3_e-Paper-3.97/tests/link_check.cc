@@ -22,6 +22,7 @@
 #include "riddle_decide.h"
 #include "wake_log.h"
 #include "kids.h"
+#include "weather.h"
 
 #include <cstdio>
 
@@ -45,6 +46,11 @@ __attribute__((used)) void *const volatile kRefs[] = {
     (void *)kids_valid,
     (void *)kids_birthday_on,
     (void *)kids_pick_callout,
+
+    (void *)wmo_icon,
+    (void *)wmo_label,
+    (void *)weather_parse,
+    (void *)weather_is_stale,
 };
 
 }  // namespace
