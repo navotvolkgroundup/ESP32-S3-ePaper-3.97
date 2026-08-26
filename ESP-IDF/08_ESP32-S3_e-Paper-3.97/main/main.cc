@@ -37,6 +37,8 @@
 #include "page_settings.h"
 #include "page_fiction.h"
 #include "page_news.h"
+#include "page_riddle.h"
+#include "sched.h"
 
 #include "freertos/semphr.h"
 
@@ -342,8 +344,16 @@ void user_Task(void *arg)
                     EPD_Sleep();
                     sleep_js++;
                     if(sleep_js > Unattended_Time){
-                        ESP_LOGI("home", "power off");
-                        axp_pwr_off();
+                        // With ambient mode on this arms the next 06:30/16:00
+                        // first and refuses to power off if the alarm does not
+                        // verify or USB is attached. With it off, behaves as
+                        // before.
+                        if (sched_ambient_enabled()) {
+                            sched_power_off_if_safe();
+                        } else {
+                            ESP_LOGI("home", "power off");
+                            axp_pwr_off();
+                        }
                     } 
                 }
             }
@@ -438,6 +448,16 @@ static void weather_mode_task(void *arg)
     vTaskDelete(NULL);
 }
 
+// Ambient riddle wake. Draws, re-arms, powers off -- the whole daily cycle.
+static void riddle_mode_task(void *arg)
+{
+    page_riddle_ambient(sched_wake_slot());
+    // Re-arm and power down. sched refuses if USB is attached or the alarm
+    // does not verify, in which case the board stays awake on purpose.
+    sched_power_off_if_safe();
+    vTaskDelete(NULL);
+}
+
 extern "C" void app_main(void)
 {
     ESP_ERROR_CHECK(nvs_flash_init());
@@ -528,6 +548,13 @@ extern "C" void app_main(void)
     } else if(mode == 3) {
         // weather
         xTaskCreate(weather_mode_task, "weather_mode", 12 * 1024, NULL, USER_TASK_PRIO, NULL);
+    } else if(mode == SCHED_MODE_RIDDLE) {
+        // Morning Riddle. 32KB rather than the 12KB the vendor modes use:
+        // those only ever speak plain HTTP (page_weather has no
+        // crt_bundle_attach), and a TLS handshake plus cert-bundle
+        // verification overruns a 12KB stack. The only proven HTTPS path on
+        // this board runs at 64KB. (Eng review E5.)
+        xTaskCreate(riddle_mode_task, "riddle_mode", 32 * 1024, NULL, USER_TASK_PRIO, NULL);
     } else {
         // Clear the alarm clock
         PCF85063_alarm_Time_Disable();

@@ -39,6 +39,7 @@
 #include "pcf85063_bsp.h"
 #include "sdcard_bsp.h"
 #include "axp_prot.h"
+#include "sched.h"
 
 static const char *TAG = "riddle";
 
@@ -591,6 +592,14 @@ static void draw_question(const riddle_nvs_t *st, const riddle_t *r)
             y += CHOICE_H + CHOICE_GAP;
         }
     }
+    // Ambient state, small, bottom-left. The toggle is otherwise invisible,
+    // and an invisible switch that decides whether the board powers itself
+    // off is the kind of thing you discover the hard way.
+    Paint_DrawString_EN(MARGIN_X, BODY_BOTTOM - 22,
+                        sched_ambient_enabled() ? "auto: on  (Boot: off)"
+                                                : "auto: off (Boot: on)",
+                        &Font12, WHITE, BLACK);
+
     if (r->by[0]) {
         char credit[BY_MAX + 8];
         snprintf(credit, sizeof credit, "-- %s", r->by);
@@ -887,6 +896,29 @@ void page_riddle_show(void)
         EPD_Init();
 
         if (b == PC_BTN_BACK) { pc_refresh(); return; }
+
+        // Boot-click toggles ambient mode. It is the only physical control not
+        // already spoken for -- Up/Function/Down are the three guesses and
+        // Function-double is back -- and 14A requires this to ship OFF, so
+        // there has to be some way to turn it on without a reflash.
+        if (b == PC_BTN_POWER) {
+            bool on = !sched_ambient_enabled();
+            sched_set_ambient_enabled(on);
+            ESP_LOGI(TAG, "ambient mode %s", on ? "ENABLED" : "disabled");
+            if (on) {
+                // Arm immediately, and say plainly whether it took. Finding
+                // out at 06:30 tomorrow that the alarm never verified is the
+                // expensive way to learn it.
+                pc_draw_message(sched_arm_next()
+                                    ? "Auto mode ON. Next wake armed."
+                                    : "Auto mode ON but the ALARM DID NOT ARM.",
+                                "Double-click Function to go back.");
+            } else {
+                pc_draw_message("Auto mode OFF. The board will stay awake.",
+                                "Double-click Function to go back.");
+            }
+            continue;
+        }
 
         int guess = (b == PC_BTN_UP) ? 0 : (b == PC_BTN_SELECT) ? 1
                   : (b == PC_BTN_DOWN) ? 2 : RIDDLE_NO_GUESS;

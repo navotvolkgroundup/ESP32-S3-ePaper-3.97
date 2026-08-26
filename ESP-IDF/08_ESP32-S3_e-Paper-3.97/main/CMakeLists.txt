@@ -14,6 +14,7 @@ idf_component_register(
         "page_riddle/riddle_decide.c"
         "page_riddle/wake_log.c"
         "page_riddle/kids.c"
+        "sched/sched.c"
         "page_common/page_common.cc"
         "page_riddle/page_riddle.cc"
     INCLUDE_DIRS 
@@ -29,6 +30,7 @@ idf_component_register(
         "page_news"
         "page_riddle"
         "page_common"
+        "sched"
     REQUIRES
         button_bsp
         esp_wifi_bsp
