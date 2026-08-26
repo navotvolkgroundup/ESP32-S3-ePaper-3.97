@@ -43,6 +43,7 @@ extern const unsigned char gImage_folder[];
 extern const unsigned char gImage_picture[];
 extern const unsigned char gImage_rests[];
 extern const unsigned char gImage_text[];
+extern const unsigned char gImage_riddle[];
 extern const unsigned char gImage_WIFI[];
 // 32*16
 extern const unsigned char gImage_BAT[];

@@ -596,8 +596,9 @@ static void draw_question(const riddle_nvs_t *st, const riddle_t *r)
     // and an invisible switch that decides whether the board powers itself
     // off is the kind of thing you discover the hard way.
     Paint_DrawString_EN(MARGIN_X, BODY_BOTTOM - 22,
-                        sched_ambient_enabled() ? "auto: on  (Boot: off)"
-                                                : "auto: off (Boot: on)",
+                        sched_ambient_enabled()
+                            ? "auto: on  (Boot: off, hold: log)"
+                            : "auto: off (Boot: on, hold: log)",
                         &Font12, WHITE, BLACK);
 
     if (r->by[0]) {
@@ -896,6 +897,16 @@ void page_riddle_show(void)
         EPD_Init();
 
         if (b == PC_BTN_BACK) { pc_refresh(); return; }
+
+        // Boot long-hold opens the wake log. It is the last unused control on
+        // this page, and the log is the only way to tell a working device from
+        // one whose alarm never armed -- both look like a riddle on a wall.
+        if (b == PC_BTN_SETTINGS) {
+            page_riddle_diagnostics();
+            riddle_input_t back = make_input(WAKE_MENU, RIDDLE_NO_GUESS);
+            render(riddle_decide(&back, &st), &st);
+            continue;
+        }
 
         // Boot-click toggles ambient mode. It is the only physical control not
         // already spoken for -- Up/Function/Down are the three guesses and

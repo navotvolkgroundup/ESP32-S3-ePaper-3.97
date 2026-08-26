@@ -85,7 +85,11 @@ bool wifi_enable;
 uint8_t *Image_Mono;
 
 // Main menu content
-const char *home_page[HOME_PAGE_NUM] = {"Files","Clock","Calendar","Alarm","Weather","Network","Audio","News"};
+// Slot 0 was "Files" (the SD browser). Replaced by the riddle: the card's job
+// on this device is delivering riddles.json and kids.json, not being browsed,
+// and the riddle page is where auto-mode is switched on. file_browser_task()
+// is untouched in the tree -- restoring it is this line plus the dispatch below.
+const char *home_page[HOME_PAGE_NUM] = {"Riddle","Clock","Calendar","Alarm","Weather","Network","Audio","News"};
 
 // Log tag
 static const char *TAG = "main";
@@ -162,7 +166,7 @@ void esp_home(int selection, int Refresh_mode)
 
 // Use the built-in image or the TF card image
 #if defined(CONFIG_IMG_SOURCE_EMBEDDED)
-    Paint_ReadBmp(gImage_file,Icon_X_1,Icon_Y_1,96,96);
+    Paint_ReadBmp(gImage_riddle,Icon_X_1,Icon_Y_1,96,96);
     Paint_ReadBmp(gImage_clock,Icon_X_2,Icon_Y_1,96,96);
     Paint_ReadBmp(gImage_calendar,Icon_Y_1,Icon_Y_2,96,96);
     Paint_ReadBmp(gImage_alarm,Icon_X_2,Icon_Y_2,96,96);
@@ -374,8 +378,9 @@ void user_Task(void *arg)
         } else if (button == 7) {
             // Enter the sub-menu
             if (home_selection == 0) {
-                // Enter File browsing
-                file_browser_task();
+                // Morning Riddle. Was file_browser_task(); restore that call
+                // and the label above to get the SD browser back.
+                page_riddle_show();
             } else if (home_selection == 1) {
                 // clock
                 page_clock_show();
