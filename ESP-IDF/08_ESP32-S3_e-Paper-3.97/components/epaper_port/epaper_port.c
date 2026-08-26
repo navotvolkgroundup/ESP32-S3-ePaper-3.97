@@ -162,17 +162,60 @@ static void EPD_SendDataBuffer(const UBYTE* buffer, UDOUBLE length)
 function :	Wait until the busy_pin goes LOW
 parameter:
 ******************************************************************************/
+// How long to wait for BUSY to release before declaring the panel unresponsive.
+// A full 4-grey refresh on this panel takes a few seconds; 15s is generous.
+#define EPD_BUSY_TIMEOUT_MS 15000
+
+// Milliseconds the last BUSY wait took, and whether it timed out. Read by
+// epd_log_panel_fingerprint() so startup can report what the panel actually did.
+static uint32_t s_last_busy_ms = 0;
+static bool     s_busy_timed_out = false;
+
 static void EPD_ReadBusy(void)
 {
-    // ESP_LOGI(TAG,"e-Paper busy");
+    // This used to be `while(1)` with no timeout. A panel that never releases
+    // BUSY - the symptom of a board revision with a different display
+    // controller - hung the firmware here forever, with a blank screen and no
+    // log line. SPI on this board is write-only (miso_io_num = -1), so we
+    // cannot ask the controller what it is; how it behaves is the only signal
+    // available, which makes bounding this wait the whole diagnostic.
     vTaskDelay(pdMS_TO_TICKS(100));
-    while(1)
-    {
-        if(!ReadBusy){break;}
-        // getstat();
+
+    uint32_t waited = 100;
+    s_busy_timed_out = false;
+
+    while (ReadBusy) {
+        if (waited >= EPD_BUSY_TIMEOUT_MS) {
+            s_busy_timed_out = true;
+            ESP_LOGE(TAG, "BUSY still asserted after %ums - panel is not responding.",
+                     (unsigned)waited);
+            ESP_LOGE(TAG, "  Driver expects an SSD16xx-family controller on a %dx%d panel.",
+                     EPD_WIDTH, EPD_HEIGHT);
+            ESP_LOGE(TAG, "  A board revision with a different controller looks exactly like");
+            ESP_LOGE(TAG, "  this. Check BUSY on GPIO%d, then the panel controller part number.",
+                     EPD_BUSY_PIN);
+            break;
+        }
         vTaskDelay(pdMS_TO_TICKS(20));
+        waited += 20;
     }
-    // ESP_LOGI(TAG,"e-Paper busy release");
+
+    s_last_busy_ms = waited;
+}
+
+// One-line panel fingerprint, logged once at startup.
+//
+// There is no controller ID to read - MISO is not connected on this board, so
+// the SPI link is write-only. What we can report is what the driver assumes and
+// how the panel actually responded to it. If a future board revision ships a
+// different controller, the timing here changes or the wait times out, and that
+// shows up in the boot log instead of as a mystery blank screen.
+void epd_log_panel_fingerprint(void)
+{
+    ESP_LOGI(TAG, "panel: %dx%d, SSD16xx cmd set, BUSY=GPIO%d, first-ready=%ums%s",
+             EPD_WIDTH, EPD_HEIGHT, EPD_BUSY_PIN,
+             (unsigned)s_last_busy_ms,
+             s_busy_timed_out ? " [TIMED OUT - see errors above]" : "");
 }
 
 /******************************************************************************

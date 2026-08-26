@@ -497,6 +497,10 @@ extern "C" void app_main(void)
 
     // EPD_Init
     EPD_Init();
+    // Report what the panel actually did on the first init. There is no
+    // controller ID to read (MISO is not wired), so this timing is the only
+    // signal that would reveal a board revision with a different controller.
+    epd_log_panel_fingerprint();
     // Create a data cache area for the e-paper
     if((Image_Mono = (UBYTE *)heap_caps_malloc(EPD_SIZE_MONO,MALLOC_CAP_SPIRAM)) == NULL) 
     {

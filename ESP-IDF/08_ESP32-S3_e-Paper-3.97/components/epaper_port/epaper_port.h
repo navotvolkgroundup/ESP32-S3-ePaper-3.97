@@ -49,6 +49,10 @@ extern "C" {
 
 void epaper_port_init(void);
 
+// Logs what the driver assumes about the panel and how it actually responded.
+// Call once after the first EPD_Init(). See the .c file for why there is no ID read.
+void epd_log_panel_fingerprint(void);
+
 void EPD_Init(void);
 void EPD_Init_Fast(void);
 void EPD_Init_Partial(void);
