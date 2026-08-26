@@ -12,12 +12,11 @@
 #include <ctype.h>
 
 #include "esp_log.h"
-#include "esp_http_client.h"
-#include "esp_crt_bundle.h"
 #include "esp_heap_caps.h"
 #include "esp_netif.h"
 
 #include "page_news.h"
+#include "page_common.h"
 #include "epaper_port.h"
 #include "GUI_Paint.h"
 #include "button_bsp.h"
@@ -63,39 +62,6 @@ static bool  s_hebrew = false;          // which feed is showing
 static char  s_titles[MAX_HEADLINES][TITLE_MAX];
 static int   s_title_count = 0;
 
-static void refresh_page_news(void)
-{
-    EPD_Display_Partial(Image_Mono, 0, 0, EPD_WIDTH, EPD_HEIGHT);
-}
-
-// ---------------------------------------------------------------- fetch ----
-
-static esp_err_t http_event_handler(esp_http_client_event_t *evt)
-{
-    static size_t total_len = 0;
-    static char *buffer = NULL;
-
-    switch (evt->event_id) {
-    case HTTP_EVENT_ON_CONNECTED:
-        total_len = 0;
-        buffer = (char *)evt->user_data;
-        break;
-    case HTTP_EVENT_ON_DATA:
-        if (!buffer) return ESP_FAIL;
-        if (total_len + evt->data_len < FEED_MAX_SIZE - 1) {
-            memcpy(buffer + total_len, evt->data, evt->data_len);
-            total_len += evt->data_len;
-            buffer[total_len] = '\0';
-        }
-        break;
-    case HTTP_EVENT_ON_FINISH:
-        buffer = NULL;
-        break;
-    default:
-        break;
-    }
-    return ESP_OK;
-}
 
 // ---------------------------------------------------------------- parse ----
 
@@ -201,33 +167,22 @@ static int parse_feed(const char *xml)
 
 static bool fetch_feed(char *buf)
 {
-    buf[0] = '\0';
+    size_t len = 0;
+    pc_fetch_status_t s = pc_fetch_url(s_hebrew ? FEED_HE_URL : FEED_EN_URL,
+                                       buf, FEED_MAX_SIZE, &len);
 
-    esp_http_client_config_t config = {};
-    config.url               = s_hebrew ? FEED_HE_URL : FEED_EN_URL;
-    config.event_handler     = http_event_handler;
-    config.user_data         = buf;
-    config.crt_bundle_attach = esp_crt_bundle_attach;   // HTTPS: feed 301s off http
-    config.timeout_ms        = 20000;
-    config.user_agent        = "esp32-eink-news/1.0";
-
-    esp_http_client_handle_t client = esp_http_client_init(&config);
-    if (!client) return false;
-
-    esp_err_t err = esp_http_client_perform(client);
-    int status = esp_http_client_get_status_code(client);
-    esp_http_client_cleanup(client);
-
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "HTTP failed: %s", esp_err_to_name(err));
-        return false;
+    // A partial feed is still a usable newspaper -- it just loses the tail
+    // headlines -- so this page deliberately treats TRUNCATED and SHORT as
+    // success, which is exactly what it did before the extraction. The riddle
+    // page must NOT copy this: a partial batch there would overwrite a good
+    // queue. Tightening this page is TODOS.md "Fix silent truncation in the
+    // page_news HTTP handler", and it is now a two-line change.
+    if (s == PC_FETCH_TRUNCATED || s == PC_FETCH_SHORT) {
+        ESP_LOGW(TAG, "partial feed (%s), showing %u bytes anyway",
+                 pc_fetch_strerror(s), (unsigned)len);
+        return true;
     }
-    if (status != 200) {
-        ESP_LOGE(TAG, "HTTP status %d", status);
-        return false;
-    }
-    ESP_LOGI(TAG, "fetched %d bytes", (int)strlen(buf));
-    return true;
+    return s == PC_FETCH_OK;
 }
 
 // --------------------------------------------------------------- render ----
@@ -295,16 +250,6 @@ static int draw_wrapped(int y, const char *text)
     return y;
 }
 
-static void draw_message(const char *l1, const char *l2)
-{
-    Paint_NewImage(Image_Mono, EPD_WIDTH, EPD_HEIGHT, 270, WHITE);
-    Paint_SetScale(2);
-    Paint_SelectImage(Image_Mono);
-    Paint_Clear(WHITE);
-    Paint_DrawString_EN(MARGIN_X, 60, l1, &Font16, WHITE, BLACK);
-    if (l2) Paint_DrawString_EN(MARGIN_X, 100, l2, &Font16, WHITE, BLACK);
-    refresh_page_news();
-}
 
 static void draw_page(void)
 {
@@ -346,7 +291,7 @@ static void draw_page(void)
     }
 
     ESP_LOGI(TAG, "rendered %d/%d headlines", shown, s_title_count);
-    refresh_page_news();
+    pc_refresh();
 }
 
 // ----------------------------------------------------------------- entry ---
@@ -355,35 +300,31 @@ void page_news_show(void)
 {
     if (!wifi_enable) {
         ESP_LOGW(TAG, "WiFi is off");
-        draw_message("WiFi is off. Enable it in Network,",
+        pc_draw_message("WiFi is off. Enable it in Network,",
                      "then double-click Function to go back.");
         EPD_Sleep();
-        while (1) {
-            int button = wait_key_event_and_return_code(portMAX_DELAY);
-            if (button == 8 || button == 22) { EPD_Init(); refresh_page_news(); return; }
-        }
+        while (pc_button_wait(portMAX_DELAY) != PC_BTN_BACK) { }
+        EPD_Init(); pc_refresh(); return;
     }
 
     esp_netif_ip_info_t ip_info;
     esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
     if (esp_netif_get_ip_info(netif, &ip_info) != ESP_OK || ip_info.ip.addr == 0) {
         ESP_LOGW(TAG, "no IP address");
-        draw_message("No IP address yet. Check the network,",
+        pc_draw_message("No IP address yet. Check the network,",
                      "then double-click Function to go back.");
         EPD_Sleep();
-        while (1) {
-            int button = wait_key_event_and_return_code(portMAX_DELAY);
-            if (button == 8 || button == 22) { EPD_Init(); refresh_page_news(); return; }
-        }
+        while (pc_button_wait(portMAX_DELAY) != PC_BTN_BACK) { }
+        EPD_Init(); pc_refresh(); return;
     }
 
     while (1) {
-        draw_message(s_hebrew ? "Fetching Ynet..." : "Fetching Techmeme...", NULL);
+        pc_draw_message(s_hebrew ? "Fetching Ynet..." : "Fetching Techmeme...", NULL);
 
         char *buf = (char *)heap_caps_malloc(FEED_MAX_SIZE, MALLOC_CAP_SPIRAM);
         if (!buf) {
             ESP_LOGE(TAG, "PSRAM allocation failed");
-            draw_message("Out of memory.",
+            pc_draw_message("Out of memory.",
                          "Double-click Function to go back.");
         } else {
             bool ok = fetch_feed(buf);
@@ -391,10 +332,10 @@ void page_news_show(void)
             heap_caps_free(buf);
 
             if (!ok) {
-                draw_message("Could not reach the feed.",
+                pc_draw_message("Could not reach the feed.",
                              "Function: other feed   Double-click: back");
             } else if (n == 0) {
-                draw_message("Feed had no headlines.",
+                pc_draw_message("Feed had no headlines.",
                              "Function: retry   Double-click: back");
             } else {
                 draw_page();
@@ -403,33 +344,30 @@ void page_news_show(void)
 
         EPD_Sleep();
 
-        // Dispatch on SPECIFIC codes. One physical press emits several events -
-        // Function alone fires 9 (Press), 7 (Click) and 10 (Bounce up) - so a
-        // catch-all "anything else" branch toggles the feed two or three times
-        // per press and lands you back where you started. Everything not named
-        // here is deliberately ignored.
-        //
-        //   7 = Function click        8 = Function double-click
-        //   0 = Up click             14 = Down click
-        //  21 = Boot click           22 = Boot double-click
-        while (1) {
-            int button = wait_key_event_and_return_code(portMAX_DELAY);
-
-            if (button == 8 || button == 22) {          // back to the menu
+        // pc_button_wait() only ever returns a decision -- it swallows the
+        // press/bounce/repeat events that made the old catch-all branch here
+        // toggle the feed two or three times per physical press. Anything not
+        // handled below is still ignored, deliberately.
+        bool leaving = false;
+        while (!leaving) {
+            switch (pc_button_wait(portMAX_DELAY)) {
+            case PC_BTN_BACK:                           // back to the menu
                 EPD_Init();
-                refresh_page_news();
+                pc_refresh();
                 return;
-            }
-            if (button == 7) {                          // switch feed
+            case PC_BTN_SELECT:                         // switch feed
                 EPD_Init();
                 s_hebrew = !s_hebrew;
+                leaving = true;
                 break;
-            }
-            if (button == 0 || button == 14) {          // reload the same feed
+            case PC_BTN_UP:
+            case PC_BTN_DOWN:                           // reload the same feed
                 EPD_Init();
+                leaving = true;
                 break;
+            default:
+                break;                                  // not ours, keep waiting
             }
-            // press / bounce / repeat / long-press: not ours, keep waiting
         }
     }
 }
