@@ -26,13 +26,18 @@
 #include "nvs.h"
 #include "cJSON.h"
 
+#include "freertos/FreeRTOS.h"   // must precede task.h; the header enforces it
+#include "freertos/task.h"       // uxTaskGetStackHighWaterMark
+
 #include "page_riddle.h"
 #include "riddle_decide.h"
+#include "wake_log.h"
 #include "page_common.h"
 #include "epaper_port.h"
 #include "GUI_Paint.h"
 #include "pcf85063_bsp.h"
 #include "sdcard_bsp.h"
+#include "axp_prot.h"
 
 static const char *TAG = "riddle";
 
@@ -64,6 +69,7 @@ static const char *TAG = "riddle";
 
 #define NVS_NS        "riddle"
 #define NVS_KEY_STATE "state"
+#define NVS_KEY_LOG   "wakelog"
 
 typedef struct {
     char q[Q_MAX];
@@ -98,17 +104,86 @@ static void state_load(riddle_nvs_t *st)
     nvs_close(h);
 }
 
+static void log_outcome(uint8_t o);      // defined with the wake log
+
 static void state_save(const riddle_nvs_t *st)
 {
     nvs_handle_t h;
     if (nvs_open(NVS_NS, NVS_READWRITE, &h) != ESP_OK) {
         ESP_LOGE(TAG, "nvs_open failed; today's progress will be lost");
+        log_outcome(WO_NVS_FAILED);
         return;
     }
     esp_err_t e = nvs_set_blob(h, NVS_KEY_STATE, st, sizeof *st);
     if (e == ESP_OK) e = nvs_commit(h);
     nvs_close(h);
-    if (e != ESP_OK) ESP_LOGE(TAG, "nvs commit: %s", esp_err_to_name(e));
+    if (e != ESP_OK) {
+        ESP_LOGE(TAG, "nvs commit: %s", esp_err_to_name(e));
+        log_outcome(WO_NVS_FAILED);
+    }
+}
+
+// -------------------------------------------------------------- wake log ----
+//
+// One record per wake, filled as the wake proceeds and committed once at the
+// end. Committing once matters: NVS is flash, and this device writes twice a
+// day for years.
+
+static wake_ring_t s_ring;
+static wake_rec_t  s_cur;
+static bool        s_cur_open;
+
+static void log_begin(int reason)
+{
+    memset(&s_cur, 0, sizeof s_cur);
+    s_cur.reason  = (uint8_t)reason;
+    s_cur.outcome = WO_OK;
+    s_cur.battery = (int8_t)get_battery_power();     // -1 if the gauge is mute
+    if (get_usb_connected()) s_cur.flags |= WF_USB;
+    s_cur_open = true;
+}
+
+// First non-OK outcome wins: the earliest fault is the one that explains the
+// rest, and a later WO_OK must not paper over it.
+static void log_outcome(uint8_t o)
+{
+    if (s_cur_open && s_cur.outcome == WO_OK) s_cur.outcome = o;
+}
+
+static void log_flag(uint8_t f) { if (s_cur_open) s_cur.flags |= f; }
+
+static void log_commit(uint32_t when, uint16_t idx)
+{
+    if (!s_cur_open) return;
+    s_cur.when = when;
+    s_cur.idx  = idx;
+    // Stack headroom, so the 32KB choice for the ambient task (eng review E5)
+    // becomes a measurement after a week instead of staying a guess.
+    s_cur.stack_free = (uint16_t)(uxTaskGetStackHighWaterMark(NULL) * sizeof(StackType_t));
+
+    wake_ring_push(&s_ring, &s_cur);
+    s_cur_open = false;
+
+    nvs_handle_t h;
+    if (nvs_open(NVS_NS, NVS_READWRITE, &h) != ESP_OK) return;
+    nvs_set_blob(h, NVS_KEY_LOG, &s_ring, sizeof s_ring);
+    nvs_commit(h);
+    nvs_close(h);
+}
+
+static void log_load(void)
+{
+    memset(&s_ring, 0, sizeof s_ring);
+    nvs_handle_t h;
+    if (nvs_open(NVS_NS, NVS_READONLY, &h) != ESP_OK) return;
+    size_t len = sizeof s_ring;
+    wake_ring_t tmp;
+    // A size mismatch means the struct changed under an old blob. Start fresh
+    // rather than reinterpreting stale bytes through a new layout.
+    if (nvs_get_blob(h, NVS_KEY_LOG, &tmp, &len) == ESP_OK &&
+        len == sizeof s_ring && wake_ring_valid(&tmp))
+        s_ring = tmp;
+    nvs_close(h);
 }
 
 // ----------------------------------------------------------------- parse ----
@@ -243,12 +318,15 @@ static int load_batch(int remaining)
         int parsed = parse_batch(buf);
         if (parsed > 0) {
             ESP_LOGI(TAG, "imported %d riddle(s) from the SD card", parsed);
+            log_outcome(WO_SD_IMPORT);
+            log_flag(WF_FETCHED);
             store_batch(buf);
             heap_caps_free(buf);
             s_count = parsed;
             return parsed;
         }
         ESP_LOGW(TAG, "SD card batch did not parse; ignoring it");
+        log_outcome(WO_PARSE_FAILED);
     }
 
     // 2. Network, only when the queue is actually running low.
@@ -264,14 +342,18 @@ static int load_batch(int remaining)
                 // Parse BEFORE storing. A batch that does not parse must not
                 // replace one that does.
                 if (parsed > 0) {
+                    log_flag(WF_FETCHED);
                     store_batch(buf);
                     heap_caps_free(buf);
                     s_count = parsed;
                     return parsed;
                 }
                 ESP_LOGW(TAG, "fetched batch did not parse; keeping the old one");
+                log_outcome(WO_PARSE_FAILED);
             } else {
                 ESP_LOGW(TAG, "fetch: %s", pc_fetch_strerror(s));
+                log_outcome((s == PC_FETCH_TRUNCATED || s == PC_FETCH_SHORT)
+                            ? WO_FETCH_PARTIAL : WO_FETCH_FAILED);
             }
         }
     }
@@ -454,8 +536,8 @@ static bool ensure_batch(const riddle_nvs_t *st)
     return s_count > 0;
 }
 
-// Local civil day right now, from the RTC.
-static int32_t today_now(void)
+// The current instant, as UTC seconds, from the RTC.
+static time_t now_utc(void)
 {
     xSemaphoreTake(rtc_mutex, portMAX_DELAY);
     Time_data t = PCF85063_GetTime();
@@ -483,7 +565,13 @@ static int32_t today_now(void)
     if (saved[0]) setenv("TZ", saved, 1); else unsetenv("TZ");
     tzset();
 
-    return riddle_local_day(utc, RIDDLE_TZ);
+    return utc;
+}
+
+// Local civil day right now.
+static int32_t today_now(void)
+{
+    return riddle_local_day(now_utc(), RIDDLE_TZ);
 }
 
 static riddle_input_t make_input(int reason, int guess)
@@ -496,13 +584,112 @@ static riddle_input_t make_input(int reason, int guess)
     return in;
 }
 
+// ----------------------------------------------------------- diagnostics ----
+//
+// Font12 is 8x21, so 480px gives 56 columns and 14 rows fit comfortably. This
+// screen is for the adult holding the board, not the kid looking at the wall,
+// so it is dense ASCII rather than anything pretty.
+
+static const char *reason_abbrev(uint8_t r)
+{
+    switch (r) {
+    case WAKE_MORNING:   return "AM";
+    case WAKE_AFTERNOON: return "PM";
+    case WAKE_GUESS:     return "GS";
+    case WAKE_REVEAL:    return "RV";
+    case WAKE_MENU:      return "MN";
+    default:             return "??";
+    }
+}
+
+void page_riddle_diagnostics(void)
+{
+    log_load();
+
+    wake_rec_t recs[WAKE_LOG_N];
+    int n = wake_ring_read(&s_ring, recs, WAKE_LOG_N);
+
+    canvas_begin();
+    Paint_DrawString_EN(MARGIN_X, 8, "WAKE LOG", &Font16, WHITE, BLACK);
+
+    char line[96];
+    snprintf(line, sizeof line, "%d entries   %d-day guess run",
+             n, wake_ring_recent_guesses(&s_ring));
+    Paint_DrawString_EN(MARGIN_X, 40, line, &Font12, WHITE, BLACK);
+    Paint_DrawLine(MARGIN_X, 64, CANVAS_W - MARGIN_X, 64, BLACK,
+                   DOT_PIXEL_1X1, LINE_STYLE_SOLID);
+
+    Paint_DrawString_EN(MARGIN_X, 72, "DATE  TIME  WK OUTCOME       G BAT STACK",
+                        &Font12, WHITE, BLACK);
+
+    int y = 96;
+    if (n == 0) {
+        Paint_DrawString_EN(MARGIN_X, y, "No wakes recorded yet.", &Font12,
+                            WHITE, BLACK);
+    }
+    for (int i = 0; i < n && y + 21 < BODY_BOTTOM; i++) {
+        const wake_rec_t *r = &recs[i];
+        char when[16] = "--/-- --:--";
+        if (r->when) {
+            // Shown in local time, because that is what you compare against
+            // "did it appear before the kids left?".
+            char saved[64];
+            const char *cur = getenv("TZ");
+            snprintf(saved, sizeof saved, "%s", cur ? cur : "");
+            setenv("TZ", RIDDLE_TZ, 1); tzset();
+            time_t t = (time_t)r->when;
+            struct tm lt;
+            localtime_r(&t, &lt);
+            if (saved[0]) setenv("TZ", saved, 1); else unsetenv("TZ");
+            tzset();
+            // The %% 100 is not paranoia about the clock, it is for the
+            // compiler: -Werror=format-truncation assumes a full-range int
+            // needs 11 characters per %02d, so without a visible bound it
+            // rejects any buffer smaller than 48. Clamping says "two digits".
+            snprintf(when, sizeof when, "%02d/%02d %02d:%02d",
+                     lt.tm_mday % 100, (lt.tm_mon + 1) % 100,
+                     lt.tm_hour % 100, lt.tm_min % 100);
+        }
+
+        const char *g = !(r->flags & WF_GUESSED) ? "-"
+                      : (r->flags & WF_CORRECT)  ? "+" : "x";
+        char bat[8];
+        if (r->battery < 0) snprintf(bat, sizeof bat, " --");
+        else                snprintf(bat, sizeof bat, "%3d", r->battery);
+
+        char stk[8] = "    -";
+        if (r->stack_free) snprintf(stk, sizeof stk, "%4uB", (unsigned)r->stack_free);
+
+        snprintf(line, sizeof line, "%-11s %-2s %-13s %s %s%% %s",
+                 when, reason_abbrev(r->reason),
+                 wake_outcome_name(r->outcome), g, bat, stk);
+        Paint_DrawString_EN(MARGIN_X, y, line, &Font12, WHITE, BLACK);
+        y += 22;
+    }
+
+    Paint_DrawString_EN(MARGIN_X, BODY_BOTTOM - 24,
+                        "Double-click Function to go back.", &Font12,
+                        WHITE, BLACK);
+    pc_refresh();
+
+    EPD_Sleep();
+    while (pc_button_wait(portMAX_DELAY) != PC_BTN_BACK) { }
+    EPD_Init();
+    pc_refresh();
+}
+
 void page_riddle_ambient(int reason)
 {
+    log_load();
+    log_begin(reason);
+
     riddle_nvs_t st;
     state_load(&st);
     if (!ensure_batch(&st)) {
+        log_outcome(WO_NO_BATCH);
         pc_draw_message("No riddles yet.",
                         "Add riddles.json, or check the network.");
+        log_commit((uint32_t)now_utc(), 0);
         return;
     }
     riddle_input_t in = make_input(reason, RIDDLE_NO_GUESS);
@@ -511,6 +698,16 @@ void page_riddle_ambient(int reason)
     // rather than skipping one, and a repeat is the cheaper mistake.
     state_save(&st);
     render(act, &st);
+
+    if (st.state == RS_GUESSED || st.state == RS_ANSWER_SHOWN) {
+        if (st.guess >= 0) {
+            log_flag(WF_GUESSED);
+            const riddle_t *r = &s_batch[st.idx];
+            if (r->has_choices && strcmp(r->choices[st.guess], r->a) == 0)
+                log_flag(WF_CORRECT);
+        }
+    }
+    log_commit((uint32_t)now_utc(), st.idx);
 }
 
 void page_riddle_show(void)
@@ -559,6 +756,17 @@ void page_riddle_show(void)
         riddle_input_t gi = make_input(reason, guess);
         riddle_action_e act = riddle_decide(&gi, &st);
         state_save(&st);
+        if (act != ACT_NONE && st.state == RS_GUESSED) {
+            // The menu is a real way to play, so it feeds the same counter
+            // the ambient path does -- otherwise the participation number
+            // undercounts exactly while ambient mode is still switched off.
+            log_load();
+            log_begin(WAKE_GUESS);
+            log_flag(WF_GUESSED);
+            if (r->has_choices && strcmp(r->choices[guess], r->a) == 0)
+                log_flag(WF_CORRECT);
+            log_commit((uint32_t)now_utc(), st.idx);
+        }
         if (act == ACT_NONE) pc_refresh(); else render(act, &st);
     }
 }

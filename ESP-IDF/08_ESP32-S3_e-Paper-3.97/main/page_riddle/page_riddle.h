@@ -14,6 +14,11 @@ void page_riddle_show(void);
 // the caller owns powering the board back off.
 void page_riddle_ambient(int reason);
 
+// Wake log screen: the last 14 wakes with outcome, battery and stack headroom.
+// The board is off ~99.98% of the time and ESP_LOG dies with the rail, so this
+// is the only way to tell a working device from one whose alarm never armed.
+void page_riddle_diagnostics(void);
+
 #ifdef __cplusplus
 }
 #endif

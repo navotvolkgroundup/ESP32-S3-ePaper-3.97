@@ -12,6 +12,7 @@
 // arrives an hour after the kids have left.
 
 #include "riddle_decide.h"
+#include "wake_log.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -238,13 +239,102 @@ static int test_state_edges(void)
     return 0;
 }
 
+// -------------------------------------------------------------- wake ring ---
+static wake_rec_t REC(uint32_t when, uint8_t outcome, uint8_t flags)
+{
+    wake_rec_t r;
+    memset(&r, 0, sizeof r);
+    r.when = when; r.outcome = outcome; r.flags = flags; r.battery = -1;
+    return r;
+}
+
+static int test_wake_ring(void)
+{
+    wake_ring_t ring;
+    wake_rec_t out[WAKE_LOG_N];
+    memset(&ring, 0, sizeof ring);
+
+    CHECK(wake_ring_read(&ring, out, WAKE_LOG_N) == 0);      // empty
+
+    // Newest first, which is the property the screen depends on.
+    for (uint32_t i = 1; i <= 3; i++) {
+        wake_rec_t r = REC(i * 1000, WO_OK, 0);
+        wake_ring_push(&ring, &r);
+    }
+    CHECK(wake_ring_read(&ring, out, WAKE_LOG_N) == 3);
+    CHECK(out[0].when == 3000 && out[1].when == 2000 && out[2].when == 1000);
+
+    // Overfill by five: count saturates and the oldest five are gone.
+    memset(&ring, 0, sizeof ring);
+    for (uint32_t i = 1; i <= WAKE_LOG_N + 5; i++) {
+        wake_rec_t r = REC(i, WO_OK, 0);
+        wake_ring_push(&ring, &r);
+    }
+    int n = wake_ring_read(&ring, out, WAKE_LOG_N);
+    CHECK(n == WAKE_LOG_N);
+    CHECK(out[0].when == (uint32_t)(WAKE_LOG_N + 5));        // newest
+    CHECK(out[n - 1].when == 6);                             // oldest surviving
+    for (int i = 1; i < n; i++) CHECK(out[i].when < out[i - 1].when);
+
+    // A short read must still give the newest, not the oldest.
+    CHECK(wake_ring_read(&ring, out, 3) == 3);
+    CHECK(out[0].when == (uint32_t)(WAKE_LOG_N + 5));
+
+    // A corrupt blob resets rather than indexing off the end.
+    memset(&ring, 0, sizeof ring);
+    ring.head = 200; ring.count = 200;
+    CHECK(!wake_ring_valid(&ring));
+    CHECK(wake_ring_read(&ring, out, WAKE_LOG_N) == 0);
+    wake_rec_t r = REC(42, WO_OK, 0);
+    wake_ring_push(&ring, &r);                               // must not crash
+    CHECK(wake_ring_valid(&ring));
+    CHECK(wake_ring_read(&ring, out, WAKE_LOG_N) == 1 && out[0].when == 42);
+    return 0;
+}
+
+static int test_wake_participation(void)
+{
+    wake_ring_t ring;
+    memset(&ring, 0, sizeof ring);
+    const uint32_t DAY = 86400;
+
+    // Three consecutive days, guessed on each. Two wakes per day, as the real
+    // device produces, so the counter must not double-count a day.
+    for (uint32_t d = 10; d <= 12; d++) {
+        wake_rec_t am = REC(d * DAY + 6 * 3600, WO_OK, WF_GUESSED);
+        wake_rec_t pm = REC(d * DAY + 16 * 3600, WO_OK, WF_GUESSED);
+        wake_ring_push(&ring, &am);
+        wake_ring_push(&ring, &pm);
+    }
+    CHECK(wake_ring_recent_guesses(&ring) == 3);
+
+    // A day with no guess ends the run, counted from the newest end.
+    memset(&ring, 0, sizeof ring);
+    wake_rec_t d10 = REC(10 * DAY, WO_OK, WF_GUESSED);
+    wake_rec_t d11 = REC(11 * DAY, WO_OK, 0);            // nobody played
+    wake_rec_t d12 = REC(12 * DAY, WO_OK, WF_GUESSED);
+    wake_ring_push(&ring, &d10);
+    wake_ring_push(&ring, &d11);
+    wake_ring_push(&ring, &d12);
+    CHECK(wake_ring_recent_guesses(&ring) == 1);
+
+    // The alarm-unset outcome has to be nameable; it is the one failure that
+    // is otherwise invisible, so a wrong label defeats the whole screen.
+    CHECK(strcmp(wake_outcome_name(WO_ALARM_UNVERIFIED), "ALARM UNSET") == 0);
+    CHECK(strcmp(wake_outcome_name(WO_OK), "ok") == 0);
+    CHECK(strcmp(wake_outcome_name(200), "?") == 0);
+    return 0;
+}
+
 int main(void)
 {
     struct { const char *name; int (*fn)(void); } tests[] = {
-        { "dst",          test_dst },
-        { "schedule",     test_schedule },
-        { "state",        test_state },
-        { "state_edges",  test_state_edges },
+        { "dst",             test_dst },
+        { "schedule",        test_schedule },
+        { "state",           test_state },
+        { "state_edges",     test_state_edges },
+        { "wake_ring",       test_wake_ring },
+        { "wake_participation", test_wake_participation },
     };
     for (unsigned i = 0; i < sizeof tests / sizeof tests[0]; i++) {
         if (tests[i].fn()) {

@@ -12,6 +12,7 @@ idf_component_register(
         "page_audio/page_audio.cc"   
         "page_settings/page_settings.cc"   
         "page_riddle/riddle_decide.c"
+        "page_riddle/wake_log.c"
         "page_common/page_common.cc"
         "page_riddle/page_riddle.cc"
     INCLUDE_DIRS 

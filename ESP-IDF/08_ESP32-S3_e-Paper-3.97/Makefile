@@ -14,10 +14,11 @@ BUILD   := build-host
 test: $(BUILD)/run_tests
 	@$(BUILD)/run_tests
 
-$(BUILD)/run_tests: tests/run_tests.c main/page_riddle/riddle_decide.c \
-                    main/page_riddle/riddle_decide.h | $(BUILD)
-	$(CC) $(CFLAGS) -Imain/page_riddle -o $@ \
-	    tests/run_tests.c main/page_riddle/riddle_decide.c
+SRC := tests/run_tests.c main/page_riddle/riddle_decide.c main/page_riddle/wake_log.c
+HDR := main/page_riddle/riddle_decide.h main/page_riddle/wake_log.h
+
+$(BUILD)/run_tests: $(SRC) $(HDR) | $(BUILD)
+	$(CC) $(CFLAGS) -Imain/page_riddle -o $@ $(SRC)
 
 $(BUILD):
 	@mkdir -p $(BUILD)
