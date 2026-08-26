@@ -11,6 +11,7 @@ idf_component_register(
         "page_news/page_news.cc"
         "page_audio/page_audio.cc"   
         "page_settings/page_settings.cc"   
+        "page_riddle/riddle_decide.c"
     INCLUDE_DIRS 
         ""
         "file_browser" 
@@ -22,6 +23,7 @@ idf_component_register(
         "page_settings" 
         "page_fiction" 
         "page_news"
+        "page_riddle"
     REQUIRES
         button_bsp
         esp_wifi_bsp
