@@ -187,7 +187,7 @@ static bool fetch_feed(char *buf)
 
 // --------------------------------------------------------------- render ----
 
-#include "hebrew.inc"
+#include "../page_common/hebrew.inc"
 
 // Techmeme appends "(Author/Publication)" to every headline. It is the least
 // useful text on a glanceable display and costs ~25 chars, so drop it. Scans
@@ -276,7 +276,8 @@ static void draw_page(void)
     int shown = 0;
     for (int i = 0; i < s_title_count; i++) {
         int next = s_hebrew
-                 ? he_draw_wrapped(y, MARGIN_X, CANVAS_W - MARGIN_X, s_titles[i], MAX_LINES)
+                 ? he_draw_wrapped(y, MARGIN_X, CANVAS_W - MARGIN_X, BODY_BOTTOM,
+                                   s_titles[i], MAX_LINES)
                  : draw_wrapped(y, s_titles[i]);
         if (next < 0) break;              // out of page
         y = next + 6;

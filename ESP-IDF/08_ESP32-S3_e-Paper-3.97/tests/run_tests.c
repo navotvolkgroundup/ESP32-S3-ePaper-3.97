@@ -219,6 +219,22 @@ static int test_state_edges(void)
     riddle_input_t late = IN(WAKE_GUESS, 701, 1, 30);
     CHECK(riddle_decide(&late, &st) == ACT_NONE);
     CHECK(st.streak == 2);
+
+    // CONTRACT, load-bearing: WAKE_MENU does NOT advance a stale day. It is
+    // deliberately read-only, so on a day the 06:30 wake never ran it shows
+    // yesterday's riddle and then refuses guesses against it. Callers must
+    // detect the stale day themselves and pass WAKE_MORNING instead -- which
+    // is what page_riddle_show() does, and it matters because ambient mode
+    // ships defaulting OFF, making the menu tile the only way in.
+    // Do not "fix" this by auto-advancing here; that would let opening the
+    // tile consume a riddle and silently break the ritual.
+    memset(&st, 0, sizeof st);
+    st.state = RS_QUESTION_SHOWN; st.day = 800; st.idx = 9;
+    riddle_input_t stale_menu = IN(WAKE_MENU, 801, RIDDLE_NO_GUESS, 30);
+    CHECK(riddle_decide(&stale_menu, &st) == ACT_SHOW_QUESTION);
+    CHECK(st.day == 800 && st.idx == 9);          // untouched, on purpose
+    riddle_input_t refused = IN(WAKE_GUESS, 801, 1, 30);
+    CHECK(riddle_decide(&refused, &st) == ACT_NONE);
     return 0;
 }
 

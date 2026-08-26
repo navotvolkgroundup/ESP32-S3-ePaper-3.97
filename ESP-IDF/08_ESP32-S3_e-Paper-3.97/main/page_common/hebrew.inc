@@ -84,7 +84,9 @@ static void he_draw_glyph(int x, int y, uint32_t cp)
     }
 }
 
-static int he_measure(const char *s)
+// Unused by some includers -- this is a shared .inc, so each translation unit
+// takes only the helpers it needs and the linker drops the rest.
+__attribute__((unused)) static int he_measure(const char *s)
 {
     uint32_t cp; int n, w = 0;
     while ((n = utf8_next(s, &cp)) > 0) { s += n; w += he_advance(cp); }
@@ -140,8 +142,14 @@ static void he_draw_line_rtl(int right_x, int y, const char *s)
 }
 
 // Word-wraps an RTL string to `width` pixels, drawing each line right-aligned.
-// Returns the y below the block, or -1 if it did not fit.
-static int he_draw_wrapped(int y, int left_x, int right_x, const char *text, int max_lines)
+// Returns the y below the block, or -1 if it did not fit above `bottom`.
+//
+// `bottom` is a parameter rather than the BODY_BOTTOM macro it used to read
+// out of whichever file included this one -- an implicit dependency on the
+// includer's macros breaks the moment a second page includes it, which is
+// exactly what page_riddle does.
+static int he_draw_wrapped(int y, int left_x, int right_x, int bottom,
+                           const char *text, int max_lines)
 {
     int width = right_x - left_x;
     const char *p = text;
@@ -166,7 +174,7 @@ static int he_draw_wrapped(int y, int left_x, int right_x, const char *text, int
         memcpy(buf, p, len);
         buf[len] = '\0';
 
-        if (y + HE_H > BODY_BOTTOM) return -1;
+        if (y + HE_H > bottom) return -1;
         he_draw_line_rtl(right_x, y, buf);
         y += HE_H - 6;                                    // cell has built-in slack
 
