@@ -1,4 +1,5 @@
 #ifndef PCF85063_BSP_H
+#include <stdbool.h>
 #define PCF85063_BSP_H
 
 
@@ -51,6 +52,32 @@ void PCF85063_SetTime_YMD(int Years,int Months,int Days);
 void PCF85063_SetTime_HMS(int hour,int minute,int second);
 Time_data PCF85063_GetTime();
 void PCF85063_alarm_Time_Enabled(Time_data time);
+
+// Arms a DAILY alarm at hour:minute, verifies it, and reports whether it took.
+//
+// Two things the vendor's PCF85063_alarm_Time_Enabled() does not do.
+//
+// First, DAILY. That function writes DAY_ALARM_REG with bit 7 CLEAR, which
+// ENABLES day-of-month matching -- so an alarm armed for 06:30 fires once a
+// month, on whichever day it happened to be armed. Bit 7 SET means "ignore
+// this field". Discoverable otherwise only by waiting ~30 days.
+//
+// Second, VERIFY. Every write primitive here returns void, so a lost I2C
+// write is silent. On a board that arms an alarm and then cuts its own power,
+// a silent miss means it never wakes again -- and the panel keeps holding the
+// last image, so a dead device looks exactly like a working one. This reads
+// the registers back and retries. Returns true only if the readback agrees.
+//
+// Callers MUST NOT power off when this returns false. Staying awake costs a
+// day of battery; powering off with no alarm costs the feature. (Eng review
+// 2A and 3A.)
+bool PCF85063_alarm_daily(int hour, int minute);
+
+// Arms a daily alarm, reads it back, logs what the chip actually stored, then
+// restores the previous state. Boot diagnostic, same idea as
+// epd_log_panel_fingerprint(): the only way to see register-level behaviour on
+// a device with no debugger attached.
+void PCF85063_log_alarm_fingerprint(void);
 void PCF85063_alarm_Time_Disable();
 int PCF85063_get_alarm_flag();
 void PCF85063_clear_alarm_flag();

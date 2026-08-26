@@ -501,6 +501,11 @@ extern "C" void app_main(void)
     // controller ID to read (MISO is not wired), so this timing is the only
     // signal that would reveal a board revision with a different controller.
     epd_log_panel_fingerprint();
+    // Same idea for the RTC: arm a daily alarm, read it back, log what the
+    // chip actually stored, restore. Decisions 2A (daily, not monthly) and 3A
+    // (verify the write) both rest on register behaviour, and this is the only
+    // way to see it on a board with no debugger attached.
+    PCF85063_log_alarm_fingerprint();
     // Create a data cache area for the e-paper
     if((Image_Mono = (UBYTE *)heap_caps_malloc(EPD_SIZE_MONO,MALLOC_CAP_SPIRAM)) == NULL) 
     {

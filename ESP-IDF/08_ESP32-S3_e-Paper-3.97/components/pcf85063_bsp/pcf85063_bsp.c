@@ -216,6 +216,93 @@ void PCF85063_alarm_Time_Enabled(Time_data time)
 	PCF85063_Write_Byte(SECOND_ALARM_REG, DecToBcd(time.seconds) & 0x7F);
 }
 
+// Bit 7 of an alarm register is the ENABLE bit, inverted: 0 = this field takes
+// part in the match, 1 = ignore it. A daily alarm therefore matches on hour
+// and minute and explicitly ignores second, day-of-month and weekday.
+#define AE_OFF 0x80
+
+bool PCF85063_alarm_daily(int hour, int minute)
+{
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+        ESP_LOGE(TAG, "alarm_daily: %02d:%02d is out of range", hour, minute);
+        return false;
+    }
+    const uint8_t want_h = (uint8_t)(DecToBcd(hour)   & 0x3F);   // AE_H = 0
+    const uint8_t want_m = (uint8_t)(DecToBcd(minute) & 0x7F);   // AE_M = 0
+
+    for (int attempt = 1; attempt <= 3; attempt++) {
+        PCF85063_Write_Byte(SECOND_ALARM_REG,  AE_OFF);          // ignore seconds
+        PCF85063_Write_Byte(MINUTES_ALARM_REG, want_m);
+        PCF85063_Write_Byte(HOUR_ARARM_REG,    want_h);
+        PCF85063_Write_Byte(DAY_ALARM_REG,     AE_OFF);          // ignore day
+        PCF85063_Write_Byte(WEEKDAY_ALARM_REG, AE_OFF);          // ignore weekday
+        PCF85063_Write_Byte(CONTROL_2_REG,
+                            (uint8_t)(PCF85063_Read_Byte(CONTROL_2_REG) | 0x80));
+
+        uint8_t got_m = PCF85063_Read_Byte(MINUTES_ALARM_REG);
+        uint8_t got_h = PCF85063_Read_Byte(HOUR_ARARM_REG);
+        uint8_t got_d = PCF85063_Read_Byte(DAY_ALARM_REG);
+        uint8_t got_w = PCF85063_Read_Byte(WEEKDAY_ALARM_REG);
+        uint8_t got_s = PCF85063_Read_Byte(SECOND_ALARM_REG);
+        uint8_t ctrl2 = PCF85063_Read_Byte(CONTROL_2_REG);
+
+        bool ok = (got_m == want_m) && (got_h == want_h) &&
+                  (got_d & AE_OFF) && (got_w & AE_OFF) && (got_s & AE_OFF) &&
+                  (ctrl2 & 0x80);
+        if (ok) {
+            if (attempt > 1) ESP_LOGW(TAG, "alarm armed on attempt %d", attempt);
+            return true;
+        }
+        ESP_LOGW(TAG, "alarm readback mismatch (attempt %d): "
+                      "min %02X/%02X hour %02X/%02X day %02X wday %02X sec %02X ctrl2 %02X",
+                 attempt, got_m, want_m, got_h, want_h, got_d, got_w, got_s, ctrl2);
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
+    ESP_LOGE(TAG, "ALARM NOT ARMED after 3 attempts. Do NOT power off: the "
+                  "board would not wake again, and the panel would keep the "
+                  "last image so nothing would look wrong.");
+    return false;
+}
+
+void PCF85063_log_alarm_fingerprint(void)
+{
+    // Save whatever was armed, so a boot diagnostic cannot eat a real alarm.
+    uint8_t save[6] = {
+        PCF85063_Read_Byte(SECOND_ALARM_REG),
+        PCF85063_Read_Byte(MINUTES_ALARM_REG),
+        PCF85063_Read_Byte(HOUR_ARARM_REG),
+        PCF85063_Read_Byte(DAY_ALARM_REG),
+        PCF85063_Read_Byte(WEEKDAY_ALARM_REG),
+        PCF85063_Read_Byte(CONTROL_2_REG),
+    };
+
+    bool ok = PCF85063_alarm_daily(6, 30);
+    ESP_LOGI(TAG, "RTC alarm fingerprint: daily 06:30 %s", ok ? "VERIFIED" : "FAILED");
+    ESP_LOGI(TAG, "  wrote sec=%02X min=%02X hour=%02X day=%02X wday=%02X",
+             AE_OFF, DecToBcd(30) & 0x7F, DecToBcd(6) & 0x3F, AE_OFF, AE_OFF);
+    ESP_LOGI(TAG, "  read  sec=%02X min=%02X hour=%02X day=%02X wday=%02X ctrl2=%02X",
+             PCF85063_Read_Byte(SECOND_ALARM_REG),
+             PCF85063_Read_Byte(MINUTES_ALARM_REG),
+             PCF85063_Read_Byte(HOUR_ARARM_REG),
+             PCF85063_Read_Byte(DAY_ALARM_REG),
+             PCF85063_Read_Byte(WEEKDAY_ALARM_REG),
+             PCF85063_Read_Byte(CONTROL_2_REG));
+    ESP_LOGI(TAG, "  day bit7=%d wday bit7=%d  (1 = field ignored, which is "
+                  "what makes it DAILY rather than monthly)",
+             (PCF85063_Read_Byte(DAY_ALARM_REG)     & AE_OFF) ? 1 : 0,
+             (PCF85063_Read_Byte(WEEKDAY_ALARM_REG) & AE_OFF) ? 1 : 0);
+    ESP_LOGI(TAG, "  RTC_INT (GPIO45) reads %d  (active low: 0 = alarm asserted)",
+             RTC_INT);
+
+    PCF85063_Write_Byte(SECOND_ALARM_REG,  save[0]);
+    PCF85063_Write_Byte(MINUTES_ALARM_REG, save[1]);
+    PCF85063_Write_Byte(HOUR_ARARM_REG,    save[2]);
+    PCF85063_Write_Byte(DAY_ALARM_REG,     save[3]);
+    PCF85063_Write_Byte(WEEKDAY_ALARM_REG, save[4]);
+    PCF85063_Write_Byte(CONTROL_2_REG,     save[5]);
+    ESP_LOGI(TAG, "  previous alarm state restored");
+}
+
 void PCF85063_alarm_Time_Disable() 
 {
 	PCF85063_Write_Byte(HOUR_ARARM_REG   ,PCF85063_Read_Byte(HOUR_ARARM_REG)|0x80);
