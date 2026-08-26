@@ -450,17 +450,33 @@ static int load_batch(int remaining)
 
 // ---------------------------------------------------------------- screen ----
 
-// LAYOUT ASSUMPTION, NOT YET VERIFIED ON HARDWARE.
+// LAYOUT GEOMETRY -- verified against the hardware 2026-08-26 (eng review D15).
 //
 // The three choices are stacked in physical button order so a child can map
 // them without being told, which is the difference between a game and a
-// decoration. That requires knowing which edge the buttons sit on and in what
-// order. Eng review decision D15 says: look at the board, then pin this.
+// decoration. Three facts pin the layout, and only the last needed eyes:
 //
-// Until then: Up above Function above Down, choices right-aligned toward the
-// right edge. If the buttons run down the LEFT edge, flip CHOICES_RIGHT_ALIGNED
-// and nothing else needs to change.
-#define CHOICES_RIGHT_ALIGNED 1
+//   1. Button ORDER: Up=GPIO4, Function=GPIO5, Down=GPIO6. Three sequential
+//      pins, so they are one physical group in that sequence.
+//   2. Canvas +y is visually DOWN. The vendor's menu increments the selection
+//      on Down while y_positions runs 57->243->429->615, which only makes
+//      sense if Down moves the highlight downward on the panel as held.
+//   3. The buttons run down the LEFT edge, top to bottom Up/Function/Down.
+//      Not derivable from code: the vendor never places button hints
+//      spatially, only as prose ("Up/Down: pick time zone" at x=10).
+//
+// So the marker glyph goes on the LEFT, beside its button, and the Hebrew
+// (RTL, so right-aligned anyway) runs away from it.
+//
+// The old name for this flag was CHOICES_RIGHT_ALIGNED, which described the
+// TEXT alignment and read as though it described the marker side. It misled
+// me into recommending the exact wrong flip once. Named for the physical fact
+// now, because that is what a reader is actually checking against.
+#define BUTTONS_ON_LEFT_EDGE 1
+
+// Width the marker reserves. riddle_gen.py must budget choices against
+// (usable width - this), or a long choice can run under the glyph.
+#define MARKER_GUTTER 34
 
 #define HDR_Y        10
 #define Q_TOP        70
@@ -541,13 +557,13 @@ static void draw_choice(int y, int i, const char *text, bool boxed)
     if (boxed)
         Paint_DrawRectangle(MARGIN_X, y - 6, CANVAS_W - MARGIN_X, y + HE_H + 6,
                             BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY);
-#if CHOICES_RIGHT_ALIGNED
+#if BUTTONS_ON_LEFT_EDGE
     Paint_DrawString_EN(MARGIN_X + 6, y + 8, kMarks[i], &Font24, WHITE, BLACK);
     he_draw_line_rtl(CANVAS_W - MARGIN_X - 10, y, text);
 #else
     Paint_DrawString_EN(CANVAS_W - MARGIN_X - 26, y + 8, kMarks[i], &Font24,
                         WHITE, BLACK);
-    he_draw_line_rtl(CANVAS_W - MARGIN_X - 40, y, text);
+    he_draw_line_rtl(CANVAS_W - MARGIN_X - MARKER_GUTTER - 6, y, text);
 #endif
 }
 
