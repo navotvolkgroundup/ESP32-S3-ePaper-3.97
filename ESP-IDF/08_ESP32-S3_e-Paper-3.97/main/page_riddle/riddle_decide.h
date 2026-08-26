@@ -78,6 +78,10 @@ typedef struct {
     int32_t  today;     // local civil day, from riddle_local_day()
 } riddle_input_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // --- schedule ---------------------------------------------------------------
 
 // Local civil day number (days since 1970-01-01 local). The day key for
@@ -93,5 +97,9 @@ time_t riddle_next_wake(time_t utc, const char *tz, int *is_morning);
 // Reads `in`, updates `st` in place, returns what to draw.
 // Pure apart from mutating `st`: no clock read, no I/O, no allocation.
 riddle_action_e riddle_decide(const riddle_input_t *in, riddle_nvs_t *st);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // RIDDLE_DECIDE_H

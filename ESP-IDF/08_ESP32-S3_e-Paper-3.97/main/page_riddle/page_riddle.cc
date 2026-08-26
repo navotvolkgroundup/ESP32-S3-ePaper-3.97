@@ -32,6 +32,7 @@
 #include "page_riddle.h"
 #include "riddle_decide.h"
 #include "wake_log.h"
+#include "kids.h"
 #include "page_common.h"
 #include "epaper_port.h"
 #include "GUI_Paint.h"
@@ -70,6 +71,8 @@ static const char *TAG = "riddle";
 #define NVS_NS        "riddle"
 #define NVS_KEY_STATE "state"
 #define NVS_KEY_LOG   "wakelog"
+#define NVS_KEY_KIDS  "kids"
+#define PATH_KIDS_SD  "/sdcard/kids.json"
 
 typedef struct {
     char q[Q_MAX];
@@ -184,6 +187,86 @@ static void log_load(void)
         len == sizeof s_ring && wake_ring_valid(&tmp))
         s_ring = tmp;
     nvs_close(h);
+}
+
+// ------------------------------------------------------------------ kids ----
+//
+// Names and birthdays live ONLY here, in device NVS, imported from an SD card
+// that never leaves the house. They are deliberately absent from riddles.json,
+// which is published to a public GitHub release -- children's names and
+// birthdays have no business on a public URL. (CEO review 8A.)
+//
+// An empty blob is the normal, shipping state: both features simply never
+// fire, which is what lets the build be complete while the answer is still
+// outstanding. (CEO review 16A.)
+
+static kids_t s_kids;
+
+static void kids_load(void)
+{
+    memset(&s_kids, 0, sizeof s_kids);
+    nvs_handle_t h;
+    if (nvs_open(NVS_NS, NVS_READONLY, &h) != ESP_OK) return;
+    size_t len = sizeof s_kids;
+    kids_t tmp;
+    if (nvs_get_blob(h, NVS_KEY_KIDS, &tmp, &len) == ESP_OK &&
+        len == sizeof s_kids && kids_valid(&tmp))
+        s_kids = tmp;
+    nvs_close(h);
+}
+
+static void kids_store(const kids_t *k)
+{
+    nvs_handle_t h;
+    if (nvs_open(NVS_NS, NVS_READWRITE, &h) != ESP_OK) return;
+    nvs_set_blob(h, NVS_KEY_KIDS, k, sizeof *k);
+    nvs_commit(h);
+    nvs_close(h);
+}
+
+// Imports /sdcard/kids.json if present, then keeps it in NVS so the card can
+// be taken out again. Shape:
+//   {"kids":[{"name":"...","month":3,"day":14}, ...]}
+static void kids_import_from_sd(void)
+{
+    char buf[1024];
+    FILE *f = fopen(PATH_KIDS_SD, "r");
+    if (!f) return;
+    size_t n = fread(buf, 1, sizeof buf - 1, f);
+    fclose(f);
+    buf[n] = 0;
+
+    cJSON *root = cJSON_Parse(buf);
+    if (!root) { ESP_LOGW(TAG, "kids.json did not parse; ignoring it"); return; }
+    const cJSON *arr = cJSON_GetObjectItemCaseSensitive(root, "kids");
+    if (!cJSON_IsArray(arr)) { cJSON_Delete(root); return; }
+
+    kids_t k;
+    memset(&k, 0, sizeof k);
+    const cJSON *it;
+    cJSON_ArrayForEach(it, arr) {
+        if (k.count >= KIDS_MAX) break;
+        const cJSON *nm = cJSON_GetObjectItemCaseSensitive(it, "name");
+        if (!cJSON_IsString(nm) || !nm->valuestring[0]) continue;
+        kid_t *kid = &k.kid[k.count];
+        snprintf(kid->name, KID_NAME_MAX, "%s", nm->valuestring);
+        const cJSON *mo = cJSON_GetObjectItemCaseSensitive(it, "month");
+        const cJSON *dy = cJSON_GetObjectItemCaseSensitive(it, "day");
+        if (cJSON_IsNumber(mo)) kid->birth_month = (uint8_t)mo->valueint;
+        if (cJSON_IsNumber(dy)) kid->birth_day   = (uint8_t)dy->valueint;
+        k.count++;
+    }
+    cJSON_Delete(root);
+
+    if (!kids_valid(&k)) {
+        ESP_LOGW(TAG, "kids.json is out of range; ignoring it");
+        return;
+    }
+    if (memcmp(&k, &s_kids, sizeof k) != 0) {
+        s_kids = k;
+        kids_store(&k);
+        ESP_LOGI(TAG, "imported %d kid(s) from the SD card", k.count);
+    }
 }
 
 // ----------------------------------------------------------------- parse ----
@@ -416,6 +499,42 @@ static void draw_header(const riddle_nvs_t *st, const riddle_t *r)
                    BLACK, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
 }
 
+// Birthday takeover.
+//
+// This is a banner across the top rather than a full-screen replacement, and
+// that is a deliberate narrowing of the accepted item. A full takeover would
+// mean the day's riddle is never shown, which then leaves the 16:00 wake
+// revealing the answer to a question nobody read -- and it costs the kid their
+// riddle on the one morning they are most likely to walk over. The banner
+// still makes the screen unmistakably about them, which was the point.
+//
+// Returns the y to continue drawing below, or `y` unchanged when nobody has a
+// birthday today (the normal case, and the only case until kids.json exists).
+static int draw_birthday_banner(int y, int month, int day)
+{
+    int who = kids_birthday_on(&s_kids, month, day);
+    if (who < 0) return y;
+
+    Paint_DrawRectangle(MARGIN_X, y, CANVAS_W - MARGIN_X, y + 2 * HE_H + 16,
+                        BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY);
+    he_draw_line_rtl(CANVAS_W - MARGIN_X - 12, y + 8, "יום הולדת שמח");
+    he_draw_line_rtl(CANVAS_W - MARGIN_X - 12, y + 8 + HE_H, s_kids.kid[who].name);
+    return y + 2 * HE_H + 32;
+}
+
+// "<name>, this one is for you." Fires about one day in three, deterministically
+// per day so the morning screen and the afternoon screen agree on who.
+static int draw_callout(int y, int32_t today)
+{
+    int who = kids_pick_callout(&s_kids, today);
+    if (who < 0) return y;
+
+    char line[KID_NAME_MAX + 24];
+    snprintf(line, sizeof line, "%s, זאת בשבילך", s_kids.kid[who].name);
+    he_draw_line_rtl(CANVAS_W - MARGIN_X, y, line);
+    return y + HE_H;
+}
+
 // Draws one choice row with its button marker on the button side.
 static void draw_choice(int y, int i, const char *text, bool boxed)
 {
@@ -437,9 +556,16 @@ static void draw_question(const riddle_nvs_t *st, const riddle_t *r)
     canvas_begin();
     draw_header(st, r);
 
-    int y = he_draw_wrapped(Q_TOP, MARGIN_X, CANVAS_W - MARGIN_X, BODY_BOTTOM,
+    int top = Q_TOP;
+    xSemaphoreTake(rtc_mutex, portMAX_DELAY);
+    Time_data t = PCF85063_GetTime();
+    xSemaphoreGive(rtc_mutex);
+    top = draw_birthday_banner(top, t.months, t.days);
+    top = draw_callout(top, st->day);
+
+    int y = he_draw_wrapped(top, MARGIN_X, CANVAS_W - MARGIN_X, BODY_BOTTOM,
                             r->q, 5);
-    if (y < 0) y = Q_TOP + 5 * (HE_H - 6);       // clamped; drew what it could
+    if (y < 0) y = top + 5 * (HE_H - 6);         // clamped; drew what it could
 
     if (r->has_choices) {
         y += 40;
@@ -532,6 +658,8 @@ static bool ensure_batch(const riddle_nvs_t *st)
                                                MALLOC_CAP_SPIRAM);
         if (!s_batch) { ESP_LOGE(TAG, "no PSRAM for the batch table"); return false; }
     }
+    kids_load();
+    kids_import_from_sd();      // no card, or no file, is the normal case
     if (s_count == 0) load_batch(remaining_of(st));
     return s_count > 0;
 }

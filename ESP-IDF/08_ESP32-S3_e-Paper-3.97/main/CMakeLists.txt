@@ -13,6 +13,7 @@ idf_component_register(
         "page_settings/page_settings.cc"   
         "page_riddle/riddle_decide.c"
         "page_riddle/wake_log.c"
+        "page_riddle/kids.c"
         "page_common/page_common.cc"
         "page_riddle/page_riddle.cc"
     INCLUDE_DIRS 

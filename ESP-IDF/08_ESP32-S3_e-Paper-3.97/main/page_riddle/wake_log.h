@@ -24,6 +24,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define WAKE_LOG_N 14           // ~1 week of two-wake days
 
 // What happened on a wake. Anything other than WO_OK is worth a look.
@@ -81,5 +85,9 @@ int wake_ring_recent_guesses(const wake_ring_t *ring);
 
 // One-word label for an outcome, for the diagnostics screen.
 const char *wake_outcome_name(uint8_t outcome);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // WAKE_LOG_H

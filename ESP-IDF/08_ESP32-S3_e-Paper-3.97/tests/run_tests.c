@@ -13,6 +13,7 @@
 
 #include "riddle_decide.h"
 #include "wake_log.h"
+#include "kids.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -326,6 +327,112 @@ static int test_wake_participation(void)
     return 0;
 }
 
+// ------------------------------------------------------------------- kids ---
+static kids_t KIDS(int n)
+{
+    kids_t k;
+    memset(&k, 0, sizeof k);
+    k.count = (uint8_t)n;
+    // Deliberately synthetic placeholders, not names. These tests care about
+    // selection, not rendering, and this file is in a PUBLIC fork -- real
+    // given names here would read as a hint about the actual kids even though
+    // the data itself never leaves device NVS.
+    const char *names[] = { "AaaA", "BbbB", "CccC", "DddD" };
+    const uint8_t mon[]  = { 3, 11, 0, 7 };
+    const uint8_t day[]  = { 14, 2, 0, 30 };
+    for (int i = 0; i < n && i < KIDS_MAX; i++) {
+        snprintf(k.kid[i].name, KID_NAME_MAX, "%s", names[i]);
+        k.kid[i].birth_month = mon[i];
+        k.kid[i].birth_day   = day[i];
+    }
+    return k;
+}
+
+static int test_kids_empty(void)
+{
+    // THE load-bearing case: with no data, both features must simply sleep.
+    // This is what makes 16A work -- the build ships complete and the kids'
+    // details become a config edit rather than a reflash.
+    kids_t k;
+    memset(&k, 0, sizeof k);
+    CHECK(kids_valid(&k));                       // empty is legal, not corrupt
+    CHECK(kids_birthday_on(&k, 3, 14) == -1);
+    for (int32_t d = 0; d < 100; d++) CHECK(kids_pick_callout(&k, d) == -1);
+    CHECK(kids_birthday_on(NULL, 3, 14) == -1);
+    CHECK(kids_pick_callout(NULL, 5) == -1);
+    return 0;
+}
+
+static int test_kids_birthday(void)
+{
+    kids_t k = KIDS(4);
+    CHECK(kids_birthday_on(&k, 3, 14) == 0);
+    CHECK(kids_birthday_on(&k, 11, 2) == 1);
+    CHECK(kids_birthday_on(&k, 7, 30) == 3);
+    CHECK(kids_birthday_on(&k, 3, 15) == -1);    // one day off
+    CHECK(kids_birthday_on(&k, 14, 3) == -1);    // month/day transposed
+
+    // A half-filled record (name, no date) never matches a birthday, but must
+    // not disqualify the whole blob -- the name is still good for callouts.
+    CHECK(k.kid[2].birth_month == 0);
+    CHECK(kids_valid(&k));
+    CHECK(kids_birthday_on(&k, 0, 0) == -1);
+
+    // Out-of-range input is rejected rather than matched against zeros.
+    CHECK(kids_birthday_on(&k, 13, 1) == -1);
+    CHECK(kids_birthday_on(&k, 2, 32) == -1);
+
+    // A corrupt blob is treated as absent.
+    kids_t bad = KIDS(2);
+    bad.count = KIDS_MAX + 3;
+    CHECK(!kids_valid(&bad));
+    CHECK(kids_birthday_on(&bad, 3, 14) == -1);
+    bad = KIDS(2); bad.kid[1].birth_month = 13;
+    CHECK(!kids_valid(&bad));
+    return 0;
+}
+
+static int test_kids_callout(void)
+{
+    kids_t k = KIDS(2);
+
+    // Deterministic per day. The morning draw, an early reveal and the 16:00
+    // draw are three separate calls on one day; if they disagreed, the screen
+    // would greet a different kid each time.
+    for (int32_t d = 0; d < 500; d++)
+        CHECK(kids_pick_callout(&k, d) == kids_pick_callout(&k, d));
+
+    // Fires sometimes, not always, and never names a kid who does not exist.
+    int fired = 0;
+    for (int32_t d = 0; d < 600; d++) {
+        int i = kids_pick_callout(&k, d);
+        CHECK(i >= -1 && i < k.count);
+        if (i >= 0) fired++;
+    }
+    CHECK(fired > 0 && fired < 600);
+
+    // Roughly one day in KIDS_CALLOUT_ONE_IN. Loose bounds on purpose: this
+    // asserts "a small surprise, not furniture", not an exact distribution.
+    CHECK(fired > 600 / (KIDS_CALLOUT_ONE_IN * 2));
+    CHECK(fired < 600 / KIDS_CALLOUT_ONE_IN * 2);
+
+    // Both kids get picked over time; it must not lock onto one.
+    int seen[KIDS_MAX] = {0};
+    for (int32_t d = 0; d < 600; d++) {
+        int i = kids_pick_callout(&k, d);
+        if (i >= 0) seen[i]++;
+    }
+    CHECK(seen[0] > 0 && seen[1] > 0);
+
+    // One kid: still valid, always index 0 when it fires.
+    kids_t solo = KIDS(1);
+    for (int32_t d = 0; d < 200; d++) {
+        int i = kids_pick_callout(&solo, d);
+        CHECK(i == -1 || i == 0);
+    }
+    return 0;
+}
+
 int main(void)
 {
     struct { const char *name; int (*fn)(void); } tests[] = {
@@ -335,6 +442,9 @@ int main(void)
         { "state_edges",     test_state_edges },
         { "wake_ring",       test_wake_ring },
         { "wake_participation", test_wake_participation },
+        { "kids_empty",      test_kids_empty },
+        { "kids_birthday",   test_kids_birthday },
+        { "kids_callout",    test_kids_callout },
     };
     for (unsigned i = 0; i < sizeof tests / sizeof tests[0]; i++) {
         if (tests[i].fn()) {
