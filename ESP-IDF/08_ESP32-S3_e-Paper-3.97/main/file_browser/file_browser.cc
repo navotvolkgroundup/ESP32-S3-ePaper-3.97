@@ -179,15 +179,15 @@ void file_browser_task(void)
     Paint_Clear(WHITE);
     
     // Center the loading information
-    Paint_DrawString_CN(10, 325, "该文件非TXT与音频文件", &Font24_UTF8, WHITE, BLACK);
-    Paint_DrawString_CN(10, 375, "也非文件夹", &Font24_UTF8, WHITE, BLACK);
-    Paint_DrawString_CN(10, 425, "无法打开，返回文件浏览页面", &Font24_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, 325, "Not a TXT or audio file", &Font24_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, 375, "and not a folder", &Font24_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, 425, "Cannot open, returning to the file list", &Font24_UTF8, WHITE, BLACK);
 
 
     while (1)
     {
         // Display the loading interface
-        display_loading("正在读取目录...", Partial_refresh);
+        display_loading("Reading directory...", Partial_refresh);
         
         // Splicing the complete path
         full_path[0] = '\0';
@@ -459,7 +459,7 @@ void display_current_path(const char* path)
     format_path_for_display(path, display_path, sizeof(display_path), available_width);
     
     // Draw the path text
-    Paint_DrawString_CN(MARGIN_LEFT, MARGIN_TOP-7, "当前位置:", &Directory_font, WHITE, BLACK);
+    Paint_DrawString_CN(MARGIN_LEFT, MARGIN_TOP-7, "Location:", &Directory_font, WHITE, BLACK);
     Paint_DrawString_CN(MARGIN_LEFT + label_width, MARGIN_TOP-7, display_path, &Directory_font, WHITE, BLACK);
 }
 
@@ -597,16 +597,16 @@ void display_status_bar(int current_page, int total_pages, int total_items)
     
     // Display page number information
     char page_info[50];
-    snprintf(page_info, sizeof(page_info), "第%d/%d页", current_page + 1, total_pages);
+    snprintf(page_info, sizeof(page_info), "Page %d/%d", current_page + 1, total_pages);
     Paint_DrawString_CN(MARGIN_LEFT, status_y, page_info, &Directory_font, WHITE, BLACK);
     
     // Display the total number of files
     char count_info[50];
-    snprintf(count_info, sizeof(count_info), "共%d项", total_items);
+    snprintf(count_info, sizeof(count_info), "%d items", total_items);
     Paint_DrawString_CN(SCREEN_WIDTH - 120, status_y, count_info, &Directory_font, WHITE, BLACK);
     
     // Display operation prompts
-    Paint_DrawString_CN(MARGIN_LEFT, status_y + Directory_font.Height + 5, "↑↓:选择,单击确认:打开,双击确认:返回上级", &Font12_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(MARGIN_LEFT, status_y + Directory_font.Height + 5, "Up/Down: pick, Function: open, double-click: back", &Font12_UTF8, WHITE, BLACK);
 
     // Display time and battery level
     char Time_str[16]={0};

@@ -145,16 +145,16 @@ void page_network_show(void)
         ESP_LOGI("network", "  (information)  channel: %d", ap_info.primary);
         ESP_LOGI("network", "  Encryption type(authmode): %d", ap_info.authmode);
         
-        Paint_DrawString_CN(10, 59, "WiFi 信息：", &Font18_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 59, "WiFi info:", &Font18_UTF8, WHITE, BLACK);
         snprintf(wifi_str, sizeof(wifi_str), "SSID: %s", ap_info.ssid );
         Paint_DrawString_CN(25, 95, wifi_str, &Font18_UTF8, WHITE, BLACK);
         snprintf(wifi_str, sizeof(wifi_str), "BSSID: %02x:%02x:%02x:%02x:%02x:%02x", ap_info.bssid[0], ap_info.bssid[1], ap_info.bssid[2], ap_info.bssid[3], ap_info.bssid[4], ap_info.bssid[5]);
         Paint_DrawString_CN(25, 131, wifi_str, &Font18_UTF8, WHITE, BLACK);
-        snprintf(wifi_str, sizeof(wifi_str), "信号强度(RSSI): %d dBm", ap_info.rssi);
+        snprintf(wifi_str, sizeof(wifi_str), "Signal (RSSI): %d dBm", ap_info.rssi);
         Paint_DrawString_CN(25, 167, wifi_str, &Font18_UTF8, WHITE, BLACK);
-        snprintf(wifi_str, sizeof(wifi_str), "信道: %d", ap_info.primary);
+        snprintf(wifi_str, sizeof(wifi_str), "Channel: %d", ap_info.primary);
         Paint_DrawString_CN(25, 203, wifi_str, &Font18_UTF8, WHITE, BLACK);
-        snprintf(wifi_str, sizeof(wifi_str), "加密类型(authmode): %d", ap_info.authmode);
+        snprintf(wifi_str, sizeof(wifi_str), "Security (authmode): %d", ap_info.authmode);
         Paint_DrawString_CN(25, 239, wifi_str, &Font18_UTF8, WHITE, BLACK);
 
 
@@ -166,14 +166,14 @@ void page_network_show(void)
             ESP_LOGI("network", "  subnet mask: " IPSTR, IP2STR(&ip_info.netmask));
             ESP_LOGI("network", "  gateway: " IPSTR, IP2STR(&ip_info.gw));
 
-            snprintf(wifi_str, sizeof(wifi_str), "IP地址: " IPSTR, IP2STR(&ip_info.ip));
+            snprintf(wifi_str, sizeof(wifi_str), "IP address: " IPSTR, IP2STR(&ip_info.ip));
             Paint_DrawString_CN(25, 275, wifi_str, &Font18_UTF8, WHITE, BLACK);
-            snprintf(wifi_str, sizeof(wifi_str), "子网掩码: " IPSTR, IP2STR(&ip_info.netmask));
+            snprintf(wifi_str, sizeof(wifi_str), "Subnet mask: " IPSTR, IP2STR(&ip_info.netmask));
             Paint_DrawString_CN(25, 311, wifi_str, &Font18_UTF8, WHITE, BLACK);
-            snprintf(wifi_str, sizeof(wifi_str), "网关: " IPSTR, IP2STR(&ip_info.gw));
+            snprintf(wifi_str, sizeof(wifi_str), "Gateway: " IPSTR, IP2STR(&ip_info.gw));
             Paint_DrawString_CN(25, 347, wifi_str, &Font18_UTF8, WHITE, BLACK);
         } else {
-            Paint_DrawString_CN(25, 275, "IP获取失败", &Font18_UTF8, WHITE, BLACK);
+            Paint_DrawString_CN(25, 275, "Could not get an IP address", &Font18_UTF8, WHITE, BLACK);
         }
     } else {
         // ESP_LOGI("network", "The Web distribution network mode has been entered. Please connect your mobile phone to the ESP32 hotspot SSID: %s and visit 192.168.4.1", ap.GetSsid().c_str());
@@ -186,7 +186,7 @@ void page_network_config(void)
     SsidManager::GetInstance().Clear();
 
     Paint_DrawRectangle(0, 57, 480, 650, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    Paint_DrawString_CN(10, 59, "以删除WiFi，2秒后重启，并重新进入配网模式", &Font18_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, 59, "WiFi cleared. Restarting in 2s into setup mode.", &Font18_UTF8, WHITE, BLACK);
     Refresh_page_network();
     ESP_LOGI("network","Delete the WiFi, restart after 2 seconds, and re-enter the distribution network mode");
     vTaskDelay(pdMS_TO_TICKS(2000));
@@ -264,7 +264,7 @@ void page_network_init(void)
         ap.Start();
         ESP_LOGI("network", "The Web distribution network mode has been entered. Please connect your mobile phone to the ESP32 hotspot SSID: %s and visit 192.168.4.1", ap.GetSsid().c_str());
 
-        snprintf(wifi_str, sizeof(wifi_str), "已进入Web配网模式，请用手机连接ESP32热点 SSID: %s 并访问192.168.4.1", ap.GetSsid().c_str());
+        snprintf(wifi_str, sizeof(wifi_str), "Setup mode. Join hotspot %s and open 192.168.4.1", ap.GetSsid().c_str());
         Paint_DrawRectangle(0, 57, 480, 650, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawString_CN(10, 59, wifi_str, &Font18_UTF8, WHITE, BLACK);
         Refresh_page_network();
@@ -308,7 +308,7 @@ void page_network_init(void)
     // Connect to the saved WiFi
     WifiStation::GetInstance().Start();
     Paint_DrawRectangle(0, 57, 480, 650, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    Paint_DrawString_CN(10, 59, "连接WiFi中", &Font18_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, 59, "Connecting to WiFi", &Font18_UTF8, WHITE, BLACK);
     Refresh_page_network();
     while (esp_wifi_sta_get_ap_info(&ap_info) != ESP_OK)
     {
@@ -318,7 +318,7 @@ void page_network_init(void)
         {
             ESP_LOGI("network", "Failed WiFi connection");
             Paint_DrawRectangle(0, 57, 480, 650, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-            Paint_DrawString_CN(10, 59, "WiFi连接失败，请手动清除WiFi并重新配置WiFi，或者重启本设备", &Font18_UTF8, WHITE, BLACK);
+            Paint_DrawString_CN(10, 59, "WiFi failed. Clear WiFi and set it up again, or restart the device.", &Font18_UTF8, WHITE, BLACK);
             Refresh_page_network();
             return;
             // SsidManager::GetInstance().Clear();
@@ -332,7 +332,7 @@ void page_network_init(void)
     i = 0;
     esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
     Paint_DrawRectangle(0, 57, 480, 650, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    Paint_DrawString_CN(10, 59, "等待获取IP地址...", &Font18_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, 59, "Waiting for an IP address...", &Font18_UTF8, WHITE, BLACK);
     Refresh_page_network();
     while ((!netif || esp_netif_get_ip_info(netif, &ip_info) != ESP_OK || ip_info.ip.addr == 0) && i++ < 30) {
         ESP_LOGI("network", "Waiting to obtain the IP address...");
@@ -341,7 +341,7 @@ void page_network_init(void)
     if (!netif || ip_info.ip.addr == 0) {
         ESP_LOGI("network", "Failed to obtain the IP address. Restart the device");
         Paint_DrawRectangle(0, 57, 480, 650, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 59, "获取IP地址失败，请手动清除WiFi并重新配置WiFi，或者重启本设备", &Font18_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 59, "No IP address. Clear WiFi and set it up again, or restart the device.", &Font18_UTF8, WHITE, BLACK);
         Refresh_page_network();
         return;
         // Clear WiFi
@@ -350,7 +350,7 @@ void page_network_init(void)
     }
 
     Paint_DrawRectangle(0, 57, 480, 650, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    Paint_DrawString_CN(10, 59, "WiFi已连接，获取网络时间中", &Font18_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, 59, "WiFi connected, getting network time", &Font18_UTF8, WHITE, BLACK);
     EPD_Display_Partial(Image_Mono,0,0,EPD_WIDTH,EPD_HEIGHT);
     page_clock_init();
 
@@ -407,7 +407,7 @@ void page_network_init_main(void)
         ap.Start();
         ESP_LOGI("network", "The Web distribution network mode has been entered. Please connect your mobile phone to the ESP32 hotspot SSID: %s and visit 192.168.4.1", ap.GetSsid().c_str());
 
-        snprintf(wifi_str, sizeof(wifi_str), "已进入Web配网模式，请用手机连接ESP32热点 SSID: %s 并访问192.168.4.1", ap.GetSsid().c_str());
+        snprintf(wifi_str, sizeof(wifi_str), "Setup mode. Join hotspot %s and open 192.168.4.1", ap.GetSsid().c_str());
         Paint_DrawRectangle(0, 57, 480, 650, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawString_CN(10, 59, wifi_str, &Font18_UTF8, WHITE, BLACK);
         Refresh_page_network();
@@ -444,7 +444,7 @@ void page_network_init_main(void)
     // Connect to the saved WiFi
     WifiStation::GetInstance().Start();
     Paint_DrawRectangle(0, 57, 480, 650, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    Paint_DrawString_CN(10, 59, "连接WiFi中", &Font18_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, 59, "Connecting to WiFi", &Font18_UTF8, WHITE, BLACK);
     Refresh_page_network();
     while (esp_wifi_sta_get_ap_info(&ap_info) != ESP_OK)
     {
@@ -454,8 +454,8 @@ void page_network_init_main(void)
         {
             ESP_LOGI("network", "Failed WiFi connection");
             Paint_DrawRectangle(0, 57, 480, 650, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-            Paint_DrawString_CN(10, 59, "WiFi连接失败", &Font18_UTF8, WHITE, BLACK);
-            Paint_DrawString_CN(10, 90, "三秒后进入主页面", &Font18_UTF8, WHITE, BLACK);
+            Paint_DrawString_CN(10, 59, "WiFi connection failed", &Font18_UTF8, WHITE, BLACK);
+            Paint_DrawString_CN(10, 90, "Home screen in 3 seconds", &Font18_UTF8, WHITE, BLACK);
             Refresh_page_network();
             vTaskDelay(pdMS_TO_TICKS(3000));
             return;
@@ -469,7 +469,7 @@ void page_network_init_main(void)
     i = 0;
     esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
     Paint_DrawRectangle(0, 57, 480, 650, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    Paint_DrawString_CN(10, 59, "等待获取IP地址...", &Font18_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, 59, "Waiting for an IP address...", &Font18_UTF8, WHITE, BLACK);
     Refresh_page_network();
     while ((!netif || esp_netif_get_ip_info(netif, &ip_info) != ESP_OK || ip_info.ip.addr == 0) && i++ < 30) {
         ESP_LOGI("network", "Waiting to obtain the IP address...");
@@ -478,8 +478,8 @@ void page_network_init_main(void)
     if (!netif || ip_info.ip.addr == 0) {
         ESP_LOGI("network", "Failed to obtain the IP address. Restart the device");
         Paint_DrawRectangle(0, 57, 480, 650, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 59, "获取IP地址失败", &Font18_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(10, 90, "三秒后进入主页面", &Font18_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 59, "Could not get an IP address", &Font18_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 90, "Home screen in 3 seconds", &Font18_UTF8, WHITE, BLACK);
         Refresh_page_network();
         vTaskDelay(pdMS_TO_TICKS(3000));
         return;
@@ -489,7 +489,7 @@ void page_network_init_main(void)
     }
 
     Paint_DrawRectangle(0, 57, 480, 650, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    Paint_DrawString_CN(10, 59, "WiFi已连接，获取网络时间中", &Font18_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, 59, "WiFi connected, getting network time", &Font18_UTF8, WHITE, BLACK);
     EPD_Display_Partial(Image_Mono,0,0,EPD_WIDTH,EPD_HEIGHT);
     page_clock_init();
 
@@ -700,14 +700,14 @@ static void display_network_init()
     if(wifi_enable) {
         page_network_show();
         Paint_DrawLine(2, 652, EPD_HEIGHT-2, 652, BLACK, DOT_PIXEL_2X2, LINE_STYLE_SOLID);
-        Paint_DrawString_CN(10, 657, " 关闭 WiFi ", &Font24_UTF8, BLACK, WHITE);
-        Paint_DrawString_CN(10, 703, " 清除 WiFi 并进入配网 ", &Font24_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(10, 749, " 返回主菜单 ", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 657, " Turn WiFi off ", &Font24_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(10, 703, " Clear WiFi and set up again ", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 749, " Back to menu ", &Font24_UTF8, WHITE, BLACK);
     } else {
         Paint_DrawLine(2, 652, EPD_HEIGHT-2, 652, BLACK, DOT_PIXEL_2X2, LINE_STYLE_SOLID);
-        Paint_DrawString_CN(10, 59, "当前 WiFi 未开启", &Font18_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(10, 657, " 开启 WiFi ", &Font24_UTF8, BLACK, WHITE);
-        Paint_DrawString_CN(10, 703, " 返回主菜单 ", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 59, "WiFi is currently off", &Font18_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 657, " Turn WiFi on ", &Font24_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(10, 703, " Back to menu ", &Font24_UTF8, WHITE, BLACK);
     }
     Refresh_page_network();
 }
@@ -716,26 +716,26 @@ static void display_network_option(int option)
 {
     if(wifi_enable) {
         if(option == 0){
-            Paint_DrawString_CN(10, 657, " 关闭 WiFi ", &Font24_UTF8, BLACK, WHITE);
-            Paint_DrawString_CN(10, 703, " 清除 WiFi 并进入配网 ", &Font24_UTF8, WHITE, BLACK);
-            Paint_DrawString_CN(10, 749, " 返回主菜单 ", &Font24_UTF8, WHITE, BLACK);
+            Paint_DrawString_CN(10, 657, " Turn WiFi off ", &Font24_UTF8, BLACK, WHITE);
+            Paint_DrawString_CN(10, 703, " Clear WiFi and set up again ", &Font24_UTF8, WHITE, BLACK);
+            Paint_DrawString_CN(10, 749, " Back to menu ", &Font24_UTF8, WHITE, BLACK);
         } else if(option == 1){
-            Paint_DrawString_CN(10, 657, " 关闭 WiFi ", &Font24_UTF8, WHITE, BLACK);
-            Paint_DrawString_CN(10, 703, " 清除 WiFi 并进入配网 ", &Font24_UTF8, BLACK, WHITE);
-            Paint_DrawString_CN(10, 749, " 返回主菜单 ", &Font24_UTF8, WHITE, BLACK);
+            Paint_DrawString_CN(10, 657, " Turn WiFi off ", &Font24_UTF8, WHITE, BLACK);
+            Paint_DrawString_CN(10, 703, " Clear WiFi and set up again ", &Font24_UTF8, BLACK, WHITE);
+            Paint_DrawString_CN(10, 749, " Back to menu ", &Font24_UTF8, WHITE, BLACK);
         } else if(option == 2){
-            Paint_DrawString_CN(10, 657, " 关闭 WiFi ", &Font24_UTF8, WHITE, BLACK);
-            Paint_DrawString_CN(10, 703, " 清除 WiFi 并进入配网 ", &Font24_UTF8, WHITE, BLACK);
-            Paint_DrawString_CN(10, 749, " 返回主菜单 ", &Font24_UTF8, BLACK, WHITE);
+            Paint_DrawString_CN(10, 657, " Turn WiFi off ", &Font24_UTF8, WHITE, BLACK);
+            Paint_DrawString_CN(10, 703, " Clear WiFi and set up again ", &Font24_UTF8, WHITE, BLACK);
+            Paint_DrawString_CN(10, 749, " Back to menu ", &Font24_UTF8, BLACK, WHITE);
         }
         
     } else {
         if(option == 0) {
-            Paint_DrawString_CN(10, 657, " 开启 WiFi ", &Font24_UTF8, BLACK, WHITE);
-            Paint_DrawString_CN(10, 703, " 返回主菜单 ", &Font24_UTF8, WHITE, BLACK);
+            Paint_DrawString_CN(10, 657, " Turn WiFi on ", &Font24_UTF8, BLACK, WHITE);
+            Paint_DrawString_CN(10, 703, " Back to menu ", &Font24_UTF8, WHITE, BLACK);
         } else if(option == 1){
-            Paint_DrawString_CN(10, 657, " 开启 WiFi ", &Font24_UTF8, WHITE, BLACK);
-            Paint_DrawString_CN(10, 703, " 返回主菜单 ", &Font24_UTF8, BLACK, WHITE);
+            Paint_DrawString_CN(10, 657, " Turn WiFi on ", &Font24_UTF8, WHITE, BLACK);
+            Paint_DrawString_CN(10, 703, " Back to menu ", &Font24_UTF8, BLACK, WHITE);
         }
     }
     Refresh_page_network();

@@ -340,12 +340,12 @@ void weather_fetch_and_show_cached(const char* city_code, bool force_refresh)
         const char *type = cJSON_GetObjectItem(day, "type") ? cJSON_GetObjectItem(day, "type")->valuestring : "";
         const char *high = cJSON_GetObjectItem(day, "high") ? cJSON_GetObjectItem(day, "high")->valuestring : "";
         if (high && high[0] != '\0') {    
-            sscanf(high, "高温 %d℃", &wendu_high);
+            sscanf(high, "High %d C", &wendu_high);
             ESP_LOGI("weather", "wendu_high = %d ",wendu_high);
         }
         const char *low = cJSON_GetObjectItem(day, "low") ? cJSON_GetObjectItem(day, "low")->valuestring : "";
         if (low && low[0] != '\0') {    
-            sscanf(low, "低温 %d℃", &wendu_low);
+            sscanf(low, "Low %d C", &wendu_low);
             ESP_LOGI("weather", "wendu_low = %d ",wendu_low);
         }
         const char *fx = cJSON_GetObjectItem(day, "fx") ? cJSON_GetObjectItem(day, "fx")->valuestring : "";
@@ -376,7 +376,7 @@ void weather_fetch_and_show_cached(const char* city_code, bool force_refresh)
             Paint_DrawString_CN(469, 154, sunrise, &Font18_UTF8, WHITE, BLACK);
             Paint_DrawString_CN(663, 154, sunset, &Font18_UTF8, WHITE, BLACK);
 
-            snprintf(weather_str, sizeof(weather_str), "%s月%s日", month_str, day_str);
+            snprintf(weather_str, sizeof(weather_str), "%s/%s", month_str, day_str);
             x_or = reassignCoordinates_CH(100, weather_str, &Font18_UTF8);
             Paint_DrawString_CN(x_or, 251, weather_str, &Font18_UTF8, WHITE, BLACK);
 
@@ -397,7 +397,7 @@ void weather_fetch_and_show_cached(const char* city_code, bool force_refresh)
         } else if(i < 4 ){
             ESP_LOGI("weather", "i = %d ",i);
 
-            snprintf(weather_str, sizeof(weather_str), "%s月%s日", month_str, day_str);
+            snprintf(weather_str, sizeof(weather_str), "%s/%s", month_str, day_str);
             x_or = reassignCoordinates_CH(100+i*200, weather_str, &Font18_UTF8);
             Paint_DrawString_CN(x_or, 251, weather_str, &Font18_UTF8, WHITE, BLACK);
             
@@ -703,8 +703,8 @@ void page_weather_city_select(void)
     if (!wifi_is_connected()) {
         ESP_LOGW("weather", "The WiFi is not connected. Please turn on WiFi!");
         ESP_LOGI("weather", "Button_Function/Boot Double-click to return to the main menu");
-        Paint_DrawString_CN(10, 25, "WiFi未开启,请先开启WiFi!", &Font24_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(10, 80, "双击 Button_Function/Boot 返回主菜单", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 25, "WiFi is off. Turn WiFi on first.", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 80, "Double-click Function/Boot for the menu", &Font24_UTF8, WHITE, BLACK);
         Refresh_page_weather();
         ESP_LOGI("clock", "EPD_Sleep");
         EPD_Sleep();
@@ -726,8 +726,8 @@ void page_weather_city_select(void)
     if (ip_ret != ESP_OK || ip_info.ip.addr == 0) {
         ESP_LOGW("weather", "The IP address for WiFi was not obtained. Please check your network!");
         ESP_LOGI("weather", "Button_Function/Boot Double-click to return to the main menu");
-        Paint_DrawString_CN(10, 25, "WiFi未获取到IP地址,请检查网络!", &Font24_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(10, 80, "双击 Button_Function/Boot 返回主菜单", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 25, "No IP address. Check the network.", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 80, "Double-click Function/Boot for the menu", &Font24_UTF8, WHITE, BLACK);
         Refresh_page_weather();
         ESP_LOGI("clock", "EPD_Sleep");
         EPD_Sleep();
@@ -767,17 +767,17 @@ void page_weather_city_select(void)
                     weather_fetch_and_show_cached(sojson_code, true);
                 } else {
                     ESP_LOGW("weather", "City matching failed");
-                    Paint_DrawString_CN(10, 25, "城市匹配失败", &Font24_UTF8, WHITE, BLACK);
-                    Paint_DrawString_CN(10, 80, "双击 Button_Function/Boot 返回主菜单", &Font24_UTF8, WHITE, BLACK);
-                    Paint_DrawString_CN(10, 135, "长按 Button_Function 重试", &Font24_UTF8, WHITE, BLACK);
+                    Paint_DrawString_CN(10, 25, "City match failed", &Font24_UTF8, WHITE, BLACK);
+                    Paint_DrawString_CN(10, 80, "Double-click Function/Boot for the menu", &Font24_UTF8, WHITE, BLACK);
+                    Paint_DrawString_CN(10, 135, "Hold Function to retry", &Font24_UTF8, WHITE, BLACK);
                     Forced_refresh_weather();
                 }
             } else {
                 ESP_LOGW("weather", "Automatic positioning failed");
                 display_weather_init();
-                Paint_DrawString_CN(10, 25, "自动定位失败", &Font24_UTF8, WHITE, BLACK);
-                Paint_DrawString_CN(10, 80, "双击 Button_Function/Boot 返回主菜单", &Font24_UTF8, WHITE, BLACK);
-                Paint_DrawString_CN(10, 135, "长按 Button_Function 重试", &Font24_UTF8, WHITE, BLACK);
+                Paint_DrawString_CN(10, 25, "Auto-location failed", &Font24_UTF8, WHITE, BLACK);
+                Paint_DrawString_CN(10, 80, "Double-click Function/Boot for the menu", &Font24_UTF8, WHITE, BLACK);
+                Paint_DrawString_CN(10, 135, "Hold Function to retry", &Font24_UTF8, WHITE, BLACK);
                 Forced_refresh_weather();
             }
         } else if(button == 8 || button == 22) {
@@ -839,7 +839,7 @@ void weather_city_select_mode()
                     if (!sd_read_file_to_buffer(CLOCK_PARTIAL_PATH, Image_Mono, EPD_SIZE_MONO)) {
                         ESP_LOGI("sdio", "The local cache file is not loaded and is displayed using the current buffer");
                     }
-                    Paint_DrawString_CN(10, 137, "无匹配城市，更新失败", &Font16_UTF8, WHITE, BLACK);
+                    Paint_DrawString_CN(10, 137, "No matching city, update failed", &Font16_UTF8, WHITE, BLACK);
                     Forced_refresh_weather();
                 }
             } else {
@@ -847,7 +847,7 @@ void weather_city_select_mode()
                 if (!sd_read_file_to_buffer(CLOCK_PARTIAL_PATH, Image_Mono, EPD_SIZE_MONO)) {
                     ESP_LOGI("sdio", "The local cache file is not loaded and is displayed using the current buffer");
                 }
-                Paint_DrawString_CN(10, 137, "定位失败，更新失败", &Font16_UTF8, WHITE, BLACK);
+                Paint_DrawString_CN(10, 137, "Location failed, update failed", &Font16_UTF8, WHITE, BLACK);
                 Forced_refresh_weather();
             }
             // standard time
@@ -982,9 +982,9 @@ static void Refresh_page_weather(void)
 static void display_weather_time(Time_data rtc_time)
 {
     char Time_str[50]={0};
-    const char* week_str[] = {"星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"};
+    const char* week_str[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 
-    ESP_LOGI("clock", "current time: %04d-%02d-%02d %02d:%02d:%02d 星期%d", rtc_time.years + 2000, rtc_time.months, rtc_time.days, rtc_time.hours, rtc_time.minutes, rtc_time.seconds, rtc_time.week);
+    ESP_LOGI("clock", "current time: %04d-%02d-%02d %02d:%02d:%02d weekday %d", rtc_time.years + 2000, rtc_time.months, rtc_time.days, rtc_time.hours, rtc_time.minutes, rtc_time.seconds, rtc_time.week);
 
     snprintf(Time_str, sizeof(Time_str), "%04d-%02d-%02d %s", rtc_time.years + 2000, rtc_time.months, rtc_time.days, week_str[rtc_time.week]);
     Paint_DrawString_CN(10, 25, Time_str, &Font24_UTF8, WHITE, BLACK);
@@ -994,7 +994,7 @@ static void display_weather_time(Time_data rtc_time)
     Lunar_calendar_acquisition(Lunar_str, 50, Time_str);
     Paint_DrawString_CN(10, 80, Lunar_str, &Font24_UTF8, WHITE, BLACK);
     
-    snprintf(Time_str, sizeof(Time_str), "更新时间: %02d:%02d", rtc_time.hours, rtc_time.minutes);
+    snprintf(Time_str, sizeof(Time_str), "Updated: %02d:%02d", rtc_time.hours, rtc_time.minutes);
     Paint_DrawString_CN(10, 137, Time_str, &Font16_UTF8, WHITE, BLACK);
 }
 
@@ -1057,7 +1057,7 @@ static char* getSdCardImageDirectory(const char* weather_desc)
 static void Relay_page_weather()
 {
     Paint_Clear(WHITE);
-    Paint_DrawString_CN(10, 25, "数据获取中，请稍等", &Font24_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, 25, "Fetching data, please wait", &Font24_UTF8, WHITE, BLACK);
     Paint_DrawString_CN(10, 80, "Data is being obtained. Please wait a moment", &Font24_UTF8, WHITE, BLACK);
     Refresh_page_weather();
 }

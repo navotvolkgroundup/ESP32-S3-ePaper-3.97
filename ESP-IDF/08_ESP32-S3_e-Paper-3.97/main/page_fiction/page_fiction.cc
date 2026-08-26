@@ -84,11 +84,11 @@ static cFONT* gbk_font_table[FONT_SIZE_MAX] = {
 };
 
 static const char* font_names[FONT_SIZE_MAX] = {
-    "12号字体", "16号字体", "18号字体", "24号字体", "28号字体", "36号字体", "48号字体"
+    "12 pt", "16 pt", "18 pt", "24 pt", "28 pt", "36 pt", "48 pt"
 };
 
 static const char* font_names_1[FONT_SIZE_MAX] = {
-    "12号", "16号", "18号", "24号", "28号", "36号", "48号"
+    "12", "16", "18", "24", "28", "36", "48"
 };
 
 
@@ -178,7 +178,7 @@ void fiction_get_content_preview(fiction_context_t* ctx, char* preview, int max_
 {
     FILE* fp = fopen(ctx->filepath, "rb");
     if (!fp) {
-        strncpy(preview, "无法获取内容", max_len - 1);
+        strncpy(preview, "Could not read the contents", max_len - 1);
         preview[max_len - 1] = '\0';
         return;
     }
@@ -443,7 +443,7 @@ void fiction_add_bookmark(fiction_context_t* ctx)
     ctx->bookmarks[ctx->bookmark_count].position = ctx->current_position;
     ctx->bookmarks[ctx->bookmark_count].page = ctx->current_page;
     ctx->bookmarks[ctx->bookmark_count].progress = progress;
-    snprintf(ctx->bookmarks[ctx->bookmark_count].description, 64, "第%d页", ctx->current_page + 1);
+    snprintf(ctx->bookmarks[ctx->bookmark_count].description, 64, "Page %d", ctx->current_page + 1);
     strncpy(ctx->bookmarks[ctx->bookmark_count].content_preview, preview, 127);
     ctx->bookmarks[ctx->bookmark_count].content_preview[127] = '\0';
     
@@ -719,7 +719,7 @@ void page_fiction_task(void)
     init_fiction_display_buffers();
     init_bookmark_display_buffers();
 
-    display_loading_fiction("小说加载中...",Partial_refresh);
+    display_loading_fiction("Loading...",Partial_refresh);
     
     // Set the display context
     strncpy(g_display_ctx.filepath, g_fiction_ctx.filepath, sizeof(g_display_ctx.filepath) - 1);
@@ -839,7 +839,7 @@ void page_fiction_task(void)
                                 if (bookmark_selection >= g_fiction_ctx.bookmark_count) {
                                     bookmark_selection = g_fiction_ctx.bookmark_count - 1;
                                 }
-                                display_loading_fiction("书签加载中...",Partial_refresh);
+                                display_loading_fiction("Loading bookmarks...",Partial_refresh);
                                 display_bookmark_list_on_screen(&g_fiction_ctx, bookmark_selection);
                                 bookmark_action_mode = false;
                             }
@@ -893,7 +893,7 @@ void page_fiction_task(void)
                 case 7:
                     if (g_fiction_ctx.bookmark_count > 0) {
                         option_selection = 0;
-                        display_loading_fiction("书签预览加载中...",Partial_refresh);
+                        display_loading_fiction("Loading preview...",Partial_refresh);
                         display_bookmark_action_menu_on_screen(&g_fiction_ctx, bookmark_selection, option_selection);
                         bookmark_action_mode = true;
                     }
@@ -906,7 +906,7 @@ void page_fiction_task(void)
                     fiction_add_bookmark(&g_fiction_ctx);
 
                     bookmark_selection = g_fiction_ctx.bookmark_count - 1;
-                    display_loading_fiction("书签加载中...",Partial_refresh);
+                    display_loading_fiction("Loading bookmarks...",Partial_refresh);
                     display_bookmark_list_on_screen(&g_fiction_ctx, bookmark_selection);
                     time_count = 0;
                     break;
@@ -960,11 +960,11 @@ void page_fiction_task(void)
                 case 7: // Bookmark function
                     if (g_fiction_ctx.bookmark_count > 0) {
                         bookmark_selection = 0;
-                        display_loading_fiction("书签加载中...",Partial_refresh);
+                        display_loading_fiction("Loading bookmarks...",Partial_refresh);
                         display_bookmark_list_on_screen(&g_fiction_ctx, bookmark_selection);
                         bookmark_mode = true;
                     } else {
-                        display_loading_fiction("书签加载中...",Partial_refresh);
+                        display_loading_fiction("Loading bookmarks...",Partial_refresh);
                         display_bookmark_list_on_screen(&g_fiction_ctx, 0);
                         bookmark_mode = true;
                     }
@@ -1375,11 +1375,11 @@ void render_page_to_buffer(page_cache_t* cache, const char* content, bool is_cur
     
     if (is_current) {
         char title[100];
-        snprintf(title, sizeof(title), "第%d页 - %s", cache->page_number + 1, font_names[g_display_ctx.current_font_size]);
+        snprintf(title, sizeof(title), "Page %d - %s", cache->page_number + 1, font_names[g_display_ctx.current_font_size]);
         Paint_DrawString_CN(20, 10, title, &Font16_UTF8, WHITE, BLACK);
         
         char encoding_info[50];
-        snprintf(encoding_info, sizeof(encoding_info), "编码: %s", g_display_ctx.encoding);
+        snprintf(encoding_info, sizeof(encoding_info), "Codec: %s", g_display_ctx.encoding);
         Paint_DrawString_CN(20, 35, encoding_info, &Font12_UTF8, WHITE, BLACK);
         
         if (g_display_ctx.file_size > 0) {
@@ -1410,7 +1410,7 @@ void render_page_to_buffer(page_cache_t* cache, const char* content, bool is_cur
     
     if (is_current) {
         char footer[100];
-        snprintf(footer, sizeof(footer), "↑↓翻页,双击↑↓字体,双击Boot:退出");
+        snprintf(footer, sizeof(footer), "Up/Down: page, double-click Up/Down: font, double Boot: exit");
         Paint_DrawString_CN(20, SCREEN_HEIGHT - 25, footer, &Font12_UTF8, WHITE, BLACK);
         
         display_time_bet_fiction(cache->buffer);
@@ -1649,12 +1649,12 @@ void render_current_page_ui(page_cache_t* cache) {
     
     // Draw the title bar
     char title[100];
-    snprintf(title, sizeof(title), "第%d页 - %s", cache->page_number + 1, font_names[g_display_ctx.current_font_size]);
+    snprintf(title, sizeof(title), "Page %d - %s", cache->page_number + 1, font_names[g_display_ctx.current_font_size]);
     Paint_DrawString_CN(20, 10, title, &Font16_UTF8, WHITE, BLACK);
     
     // Display coding information
     char encoding_info[50];
-    snprintf(encoding_info, sizeof(encoding_info), "编码: %s", g_display_ctx.encoding);
+    snprintf(encoding_info, sizeof(encoding_info), "Codec: %s", g_display_ctx.encoding);
     Paint_DrawString_CN(20, 35, encoding_info, &Font12_UTF8, WHITE, BLACK);
     
     if (g_display_ctx.file_size > 0) {
@@ -1667,7 +1667,7 @@ void render_current_page_ui(page_cache_t* cache) {
     // Clear and draw the footer
     Paint_DrawRectangle(0, SCREEN_HEIGHT - 25, SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
     char footer[100];
-    snprintf(footer, sizeof(footer), "↑↓翻页,双击↑↓:字体,双击Boot:退出");
+    snprintf(footer, sizeof(footer), "Up/Down: page, double-click Up/Down: font, double Boot: exit");
     Paint_DrawString_CN(20, SCREEN_HEIGHT - 25, footer, &Font12_UTF8, WHITE, BLACK);
 
     // Time and battery power
@@ -1693,11 +1693,11 @@ void display_font_menu(font_size_t selected_font) {
     Paint_SelectImage(Image_Mono);
     Paint_Clear(WHITE);
     
-    Paint_DrawString_CN(20, 20, "字体设置", &Font24_UTF8, BLACK, WHITE);
+    Paint_DrawString_CN(20, 20, "Font Size", &Font24_UTF8, BLACK, WHITE);
     Paint_DrawLine(20, 60, SCREEN_WIDTH - 20, 60, BLACK, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
     
     char encoding_info[50];
-    snprintf(encoding_info, sizeof(encoding_info), "编码: %s", g_display_ctx.encoding);
+    snprintf(encoding_info, sizeof(encoding_info), "Codec: %s", g_display_ctx.encoding);
     Paint_DrawString_CN(20, 70, encoding_info, &Font16_UTF8, BLACK, WHITE);
     
     int start_y = 120;
@@ -1709,7 +1709,7 @@ void display_font_menu(font_size_t selected_font) {
         Paint_DrawString_CN(60, y_pos, font_names_1[i], demo_font, BLACK, WHITE);
         
         // Sample text
-        Paint_DrawString_CN(200, y_pos, "示例Abc123", demo_font, WHITE, BLACK);
+        Paint_DrawString_CN(200, y_pos, "Sample Abc123", demo_font, WHITE, BLACK);
         
         if (i == (int)selected_font) {
             Paint_DrawRectangle(15, y_pos - 5, SCREEN_WIDTH - 15, y_pos + demo_font->Height + 5, BLACK, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
@@ -1720,7 +1720,7 @@ void display_font_menu(font_size_t selected_font) {
         if (y_pos > SCREEN_HEIGHT - 80) break;
     }
     
-    Paint_DrawString_CN(20, SCREEN_HEIGHT - 40, "↑↓选择,单击确认:应用,双击确认:返回", &Font12_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(20, SCREEN_HEIGHT - 40, "Up/Down: pick, Function: apply, double-click: back", &Font12_UTF8, WHITE, BLACK);
     
     EPD_Display_Partial(Image_Mono, 0, 0, EPD_WIDTH, EPD_HEIGHT);
 }
@@ -1832,20 +1832,20 @@ void display_bookmark_list_on_screen(fiction_context_t* ctx, int selected_index)
     Paint_Clear(WHITE);
     
     // title bar
-    Paint_DrawString_CN(20, 20, "书签管理", &Font24_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(20, 20, "Bookmarks", &Font24_UTF8, WHITE, BLACK);
     Paint_DrawLine(20, 60, SCREEN_WIDTH - 20, 60, BLACK, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
     
     // Display bookmark statistics information
     char stats_info[100];
-    snprintf(stats_info, sizeof(stats_info), "共有 %d 个书签", ctx->bookmark_count);
+    snprintf(stats_info, sizeof(stats_info), "%d bookmarks", ctx->bookmark_count);
     Paint_DrawString_CN(20, 70, stats_info, &Font16_UTF8, WHITE, BLACK);
     
     if (ctx->bookmark_count == 0) {
         // A prompt when there are no bookmarks
         int center_y = SCREEN_HEIGHT / 2;
-        Paint_DrawString_CN(60, center_y - 60, "还没有添加任何书签", &Font18_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(60, center_y - 20, "在阅读时按 8 键可添加当前位置为书签", &Font16_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(60, center_y + 20, "书签可以帮助您快速回到感兴趣的位置", &Font16_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(60, center_y - 60, "No bookmarks yet", &Font18_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(60, center_y - 20, "Press 8 while reading to bookmark this spot", &Font16_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(60, center_y + 20, "Bookmarks jump you back to a spot you liked", &Font16_UTF8, WHITE, BLACK);
     } else {
         // Display the bookmark list
         int list_start_y = 100; 
@@ -1876,12 +1876,12 @@ void display_bookmark_list_on_screen(fiction_context_t* ctx, int selected_index)
             
             // Bookmark serial number and basic information
             char bookmark_title[100];
-            snprintf(bookmark_title, sizeof(bookmark_title), "书签 %d: 第 %d 页", actual_index + 1, ctx->bookmarks[actual_index].page + 1);
+            snprintf(bookmark_title, sizeof(bookmark_title), "Bookmark %d: page %d", actual_index + 1, ctx->bookmarks[actual_index].page + 1);
             Paint_DrawString_CN(55, item_y + 5, bookmark_title, &Font18_UTF8, WHITE, BLACK);
             
             // Progress information
             char progress_info[50];
-            snprintf(progress_info, sizeof(progress_info), "阅读进度: %.1f%%", 
+            snprintf(progress_info, sizeof(progress_info), "Progress: %.1f%%", 
                      ctx->bookmarks[actual_index].progress);
             Paint_DrawString_CN(55, item_y + 8 + Font18_UTF8.Height, progress_info, &Font16_UTF8, WHITE, BLACK);
             
@@ -1918,11 +1918,11 @@ void display_bookmark_list_on_screen(fiction_context_t* ctx, int selected_index)
     Paint_DrawLine(20, SCREEN_HEIGHT - Font16_UTF8.Height * 2 - 25, SCREEN_WIDTH - 20, SCREEN_HEIGHT - Font16_UTF8.Height * 2 - 25, BLACK, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
     
     if (ctx->bookmark_count > 0) {
-        Paint_DrawString_CN(20, SCREEN_HEIGHT - Font16_UTF8.Height * 2 - 20, "↑↓选择书签,确认:操作菜单", &Font16_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(20, SCREEN_HEIGHT - Font16_UTF8.Height * 1 - 15, "双击确认:添加书签,双击Boot:返回", &Font12_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(20, SCREEN_HEIGHT - Font16_UTF8.Height * 2 - 20, "Up/Down: pick bookmark, Function: actions", &Font16_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(20, SCREEN_HEIGHT - Font16_UTF8.Height * 1 - 15, "Double-click Function: bookmark, Boot: back", &Font12_UTF8, WHITE, BLACK);
     } else {
-        Paint_DrawString_CN(20, SCREEN_HEIGHT - Font16_UTF8.Height * 2 - 20, "双击确认:添加书签", &Font16_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(20, SCREEN_HEIGHT - Font16_UTF8.Height * 1 - 15, "双击Boot:返回阅读", &Font16_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(20, SCREEN_HEIGHT - Font16_UTF8.Height * 2 - 20, "Double-click Function: add bookmark", &Font16_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(20, SCREEN_HEIGHT - Font16_UTF8.Height * 1 - 15, "Double-click Boot: back to reading", &Font16_UTF8, WHITE, BLACK);
     }
 
     // Time and battery power
@@ -2019,25 +2019,25 @@ void display_bookmark_action_menu_on_screen(fiction_context_t* ctx, int bookmark
     Paint_SelectImage(bookmark_preview_buffer);
     Paint_Clear(WHITE);
     
-    Paint_DrawString_CN(10, 20, "书签操作", &Font24_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, 20, "Bookmark actions", &Font24_UTF8, WHITE, BLACK);
     Paint_DrawLine(10, 20 + Font24_UTF8.Height+5, SCREEN_WIDTH - 10, 20 + Font24_UTF8.Height+5, BLACK, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
     
     int info_start_y = 80;
     
     char bookmark_title[100];
-    snprintf(bookmark_title, sizeof(bookmark_title), "书签 %d", bookmark_index + 1);
+    snprintf(bookmark_title, sizeof(bookmark_title), "Bookmark %d", bookmark_index + 1);
     Paint_DrawString_CN(10, info_start_y, bookmark_title, &Font18_UTF8, WHITE, BLACK);
     
     char page_info[50];
-    snprintf(page_info, sizeof(page_info), "位置: 第 %d 页", ctx->bookmarks[bookmark_index].page + 1);
+    snprintf(page_info, sizeof(page_info), "Position: page %d", ctx->bookmarks[bookmark_index].page + 1);
     Paint_DrawString_CN(10, info_start_y + Font18_UTF8.Height + 5, page_info, &Font18_UTF8, WHITE, BLACK);
     
     char progress_info[50];
-    snprintf(progress_info, sizeof(progress_info), "进度: %.1f%%", ctx->bookmarks[bookmark_index].progress);
+    snprintf(progress_info, sizeof(progress_info), "Progress: %.1f%%", ctx->bookmarks[bookmark_index].progress);
     Paint_DrawString_CN(10, info_start_y + Font18_UTF8.Height * 2 + 10, progress_info, &Font18_UTF8, WHITE, BLACK);
     
     // Content Preview
-    Paint_DrawString_CN(10, info_start_y + Font18_UTF8.Height * 3 + 15, "内容预览:", &Font16_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, info_start_y + Font18_UTF8.Height * 3 + 15, "Preview:", &Font16_UTF8, WHITE, BLACK);
 
     char preview[128];
     strncpy(preview, ctx->bookmarks[bookmark_index].content_preview, sizeof(preview) - 1);
@@ -2077,9 +2077,9 @@ void display_bookmark_action_menu_on_screen(fiction_context_t* ctx, int bookmark
     int options_start_y = SCREEN_HEIGHT - 240;
     Paint_DrawLine(20, options_start_y - 20, SCREEN_WIDTH - 20, options_start_y - 20, BLACK, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
     
-    Paint_DrawString_CN(20, options_start_y - 15, "选择操作:", &Font18_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(20, options_start_y - 15, "Choose an action:", &Font18_UTF8, WHITE, BLACK);
     
-    const char* options[] = {"跳转到此书签", "删除此书签", "返回书签列表"};
+    const char* options[] = {"Go to this bookmark", "Delete this bookmark", "Back to bookmarks"};
     int option_height = Font18_UTF8.Height+10; 
     
     for (int i = 0; i < 3; i++) {
@@ -2094,8 +2094,8 @@ void display_bookmark_action_menu_on_screen(fiction_context_t* ctx, int bookmark
     Paint_DrawString_CN(25, (options_start_y + Font18_UTF8.Height + option_selection * option_height-10)+5, ">", &Font18_UTF8, BLACK, WHITE);
     
     Paint_DrawLine(10, SCREEN_HEIGHT - 70, SCREEN_WIDTH - 10, SCREEN_HEIGHT - 70, BLACK, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
-    Paint_DrawString_CN(10, SCREEN_HEIGHT - 65, "↑↓选择,确认:执行", &Font16_UTF8, WHITE, BLACK);
-    Paint_DrawString_CN(10, SCREEN_HEIGHT - 32, "双击确认/Boot:返回书签列表", &Font16_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, SCREEN_HEIGHT - 65, "Up/Down: pick, Function: run", &Font16_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, SCREEN_HEIGHT - 32, "Double-click Function/Boot: bookmarks", &Font16_UTF8, WHITE, BLACK);
 
     display_time_bet_fiction(bookmark_preview_buffer);
 
@@ -2463,10 +2463,10 @@ static void display_fiction_file_list(file_entry_t* entries, int num_entries, in
     Paint_DrawLine(10, status_y - 5, EPD_HEIGHT - 10, status_y - 5, BLACK, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
 
     char page_info[50];
-    snprintf(page_info, sizeof(page_info), "第%d/%d页 共%d个文件", page_index + 1, total_pages, num_entries);
+    snprintf(page_info, sizeof(page_info), "Page %d/%d, %d files", page_index + 1, total_pages, num_entries);
     Paint_DrawString_CN(10, EPD_WIDTH-(Font12_UTF8.Height*2 + 10), page_info, &Font12_UTF8, WHITE, BLACK);
     
-    Paint_DrawString_CN(10, EPD_WIDTH - (Font12_UTF8.Height + 5), "↑↓选择,单击确认:打开,双击确认:返回上级", &Font12_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, EPD_WIDTH - (Font12_UTF8.Height + 5), "Up/Down: pick, Function: open, double-click: back", &Font12_UTF8, WHITE, BLACK);
 
     EPD_Display_Partial(Image_Fiction, 0, 0, EPD_WIDTH, EPD_HEIGHT);
 }
@@ -2544,8 +2544,8 @@ int page_fiction_file(void)
     bool first_display = true; 
 
     Paint_DrawRectangle(5, 58, 475, 789, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    uint16_t x_or = reassignCoordinates_CH(240, " 正在读取文件目录... ", &Font24_UTF8);
-    Paint_DrawString_CN(x_or, 410, " 正在读取文件目录... ", &Font24_UTF8, BLACK, WHITE);
+    uint16_t x_or = reassignCoordinates_CH(240, " Reading directory... ", &Font24_UTF8);
+    Paint_DrawString_CN(x_or, 410, " Reading directory... ", &Font24_UTF8, BLACK, WHITE);
     Refresh_page_fiction(Image_Fiction);
     Paint_DrawRectangle(5, 58, 475, 789, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
 
