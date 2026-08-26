@@ -36,6 +36,7 @@
 #include "page_audio.h"
 #include "page_settings.h"
 #include "page_fiction.h"
+#include "page_news.h"
 
 #include "freertos/semphr.h"
 
@@ -82,7 +83,7 @@ bool wifi_enable;
 uint8_t *Image_Mono;
 
 // Main menu content
-const char *home_page[HOME_PAGE_NUM] = {"文件","时钟","日历","闹钟","天气","网络","音频","阅读"};
+const char *home_page[HOME_PAGE_NUM] = {"Files","Clock","Calendar","Alarm","Weather","Network","Audio","News"};
 
 // Log tag
 static const char *TAG = "main";
@@ -384,7 +385,9 @@ void user_Task(void *arg)
                 // audio
                 page_audio_main();
             } else if (home_selection == 7) {
-                page_fiction_file();
+                // Techmeme RSS newspaper. Was page_fiction_file() (SD-card
+                // text reader); restore that call to get the fiction reader back.
+                page_news_show();
             } else {
                 ESP_LOGI("home", "entry page: %s", home_page[home_selection]);
                 // Other pages can be expanded here
