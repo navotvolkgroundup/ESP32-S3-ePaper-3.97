@@ -71,11 +71,22 @@ static const timezone_config_t timezone_list[] = {
 #define TIMEZONE_COUNT (sizeof(timezone_list) / sizeof(timezone_config_t))
 #define DEFAULT_TIMEZONE_INDEX 20  // Default Eastern 8th Time Zone (UTC+8)
 
-// NVS key name
-#define NVS_NAMESPACE "clock_config"
+// NVS storage for this page.
+//
+// This used to define NVS_NAMESPACE twice -- "clock_config" and then
+// "clock_th" -- which the compiler flagged ("NVS_NAMESPACE redefined") and
+// which meant the timezone silently landed in the SECOND one, because the
+// only two uses come after both defines. NVS_KEY was dead as well: the
+// temperature/humidity blob is opened with string literals, not the macro.
+//
+// DO NOT "fix" this by pointing the timezone at "clock_config". That reads
+// like the intended name, but every device in the field has its timezone
+// stored under "clock_th" -- changing the namespace orphans that value and
+// silently reverts the clock to the factory default of index 20, UTC+8
+// Beijing. One namespace, two keys, is the behaviour that already exists.
+#define CLOCK_NVS_NS     "clock_th"
 #define NVS_KEY_TIMEZONE "timezone_idx"
-#define NVS_NAMESPACE "clock_th"
-#define NVS_KEY "th_data" 
+#define NVS_KEY_TH       "th_data"
 
 // E-ink screen sleep time (S)
 #define EPD_Sleep_Time   60
@@ -174,7 +185,7 @@ static int load_timezone_index_from_nvs(void)
     nvs_handle_t nvs_handle;
     int32_t timezone_idx = DEFAULT_TIMEZONE_INDEX;
     
-    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READONLY, &nvs_handle);
+    esp_err_t err = nvs_open(CLOCK_NVS_NS, NVS_READONLY, &nvs_handle);
     if (err == ESP_OK) {
         nvs_get_i32(nvs_handle, NVS_KEY_TIMEZONE, &timezone_idx);
         nvs_close(nvs_handle);
@@ -198,7 +209,7 @@ static esp_err_t save_timezone_index_to_nvs(int timezone_idx)
         return ESP_ERR_INVALID_ARG;
     }
     
-    err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs_handle);
+    err = nvs_open(CLOCK_NVS_NS, NVS_READWRITE, &nvs_handle);
     if (err != ESP_OK) {
         ESP_LOGE("timezone", "Failed to open NVS: %s", esp_err_to_name(err));
         return err;
@@ -218,15 +229,15 @@ static esp_err_t save_timezone_index_to_nvs(int timezone_idx)
 void load_clock_from_nvs(void) {
     nvs_handle_t handle;
     size_t required_size = sizeof(Clock_TH_Old);
-    if (nvs_open("clock_th", NVS_READONLY, &handle) == ESP_OK) {
-        nvs_get_blob(handle, "th_data", &Clock_TH_Old, &required_size);
+    if (nvs_open(CLOCK_NVS_NS, NVS_READONLY, &handle) == ESP_OK) {
+        nvs_get_blob(handle, NVS_KEY_TH, &Clock_TH_Old, &required_size);
         nvs_close(handle);
     }
 }
 void save_clock_to_nvs_if_changed(void) {
     nvs_handle_t handle;
-    if (nvs_open("clock_th", NVS_READWRITE, &handle) == ESP_OK) {
-        nvs_set_blob(handle, "th_data", &Clock_TH_Old, sizeof(Clock_TH_Old));
+    if (nvs_open(CLOCK_NVS_NS, NVS_READWRITE, &handle) == ESP_OK) {
+        nvs_set_blob(handle, NVS_KEY_TH, &Clock_TH_Old, sizeof(Clock_TH_Old));
         nvs_commit(handle);
         nvs_close(handle);
     }
