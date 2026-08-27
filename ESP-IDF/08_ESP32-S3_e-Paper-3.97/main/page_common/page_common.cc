@@ -58,7 +58,14 @@ pc_button_t pc_button_wait(TickType_t timeout)
     // own `while (1) { code = wait(); ... }` are the ones that grow catch-all
     // branches and fire multiple times per press.
     for (;;) {
-        pc_button_t b = pc_button_classify(wait_key_event_and_return_code(timeout));
+        int code = wait_key_event_and_return_code(timeout);
+        pc_button_t b = pc_button_classify(code);
+        // Raw code AND its meaning, on every real event. Two bugs this session
+        // came from inferring codes out of button_bsp.c rather than watching
+        // what the hardware actually emits, and one of them (the wake log) is
+        // on a page that draws without logging, so serial could not see it at
+        // all. Cheap: a handful of lines per press, only when a button moves.
+        if (code >= 0) ESP_LOGI(TAG, "button raw=%d -> %d", code, (int)b);
         if (b != PC_BTN_IGNORE) return b;
         // A non-decision event still consumed the timeout window. With
         // portMAX_DELAY that is harmless; with a finite timeout the caller

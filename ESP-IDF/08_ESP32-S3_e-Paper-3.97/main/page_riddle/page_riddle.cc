@@ -990,6 +990,7 @@ static const char *reason_abbrev(uint8_t r)
 
 void page_riddle_diagnostics(void)
 {
+    ESP_LOGI(TAG, "wake log opened");   // this page only draws; say it ran
     log_load();
 
     wake_rec_t recs[WAKE_LOG_N];
