@@ -303,35 +303,6 @@ void user_Task(void *arg)
     // you see. Function double-click returns here, so the menu is one gesture
     // away and nothing becomes unreachable -- which is the only reason this is
     // safe to do (eng review D3).
-    // Any NON-alarm boot -- the reset button, a battery blip, plugging in USB
-    // -- takes the recovery path above and forces the boot mode back to 0.
-    // That is correct as a recovery, but it also silently cancels auto mode
-    // while leaving the RTC alarm armed: the board would still wake at 06:30
-    // and then just sit in the menu, having forgotten it had a job.
-    //
-    // BEFORE the page, not after. page_riddle_show() blocks until someone
-    // presses a button, so re-arming underneath it means the alarm is only
-    // restored if a person happens to walk past and press Function twice --
-    // which is precisely the failure this exists to prevent. Verified the
-    // hard way: the first version logged nothing at all on boot.
-    //
-    // This does mean a reset no longer escapes auto mode. It does not need to:
-    // Boot-click on the daily page turns it off, and the menu is a Function
-    // double-click away.
-    // ON BATTERY ONLY. sched_arm_next() writes the boot mode back to
-    // SCHED_MODE_RIDDLE, and the recovery gate above powers the board OFF the
-    // moment it sees a non-zero mode with USB attached. Re-arming here
-    // unconditionally therefore turns every USB boot into a power-off: the
-    // board comes up, writes the mode, and the NEXT boot kills itself. That is
-    // not a hypothetical -- it took the board off the bus and cost a power
-    // cycle to get back.
-    //
-    // Restricting it to battery boots is also the honest scope: the ambient
-    // cycle cannot run on USB anyway, because power-off is refused to keep the
-    // board flashable.
-    if (!get_usb_connected() && sched_ambient_enabled() && !sched_arm_next())
-        ESP_LOGW("main", "auto mode is on but the alarm did NOT re-arm");
-
     page_riddle_show();
 
     esp_home(home_selection, Global_refresh);
