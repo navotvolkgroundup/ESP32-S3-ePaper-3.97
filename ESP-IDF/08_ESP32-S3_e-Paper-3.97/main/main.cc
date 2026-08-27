@@ -318,7 +318,18 @@ void user_Task(void *arg)
     // This does mean a reset no longer escapes auto mode. It does not need to:
     // Boot-click on the daily page turns it off, and the menu is a Function
     // double-click away.
-    if (sched_ambient_enabled() && !sched_arm_next())
+    // ON BATTERY ONLY. sched_arm_next() writes the boot mode back to
+    // SCHED_MODE_RIDDLE, and the recovery gate above powers the board OFF the
+    // moment it sees a non-zero mode with USB attached. Re-arming here
+    // unconditionally therefore turns every USB boot into a power-off: the
+    // board comes up, writes the mode, and the NEXT boot kills itself. That is
+    // not a hypothetical -- it took the board off the bus and cost a power
+    // cycle to get back.
+    //
+    // Restricting it to battery boots is also the honest scope: the ambient
+    // cycle cannot run on USB anyway, because power-off is refused to keep the
+    // board flashable.
+    if (!get_usb_connected() && sched_ambient_enabled() && !sched_arm_next())
         ESP_LOGW("main", "auto mode is on but the alarm did NOT re-arm");
 
     page_riddle_show();
