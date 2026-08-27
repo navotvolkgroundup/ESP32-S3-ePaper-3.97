@@ -18,6 +18,7 @@
 // mild disappointment. (CEO review 4A, 5A, 7A.)
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "esp_log.h"
@@ -33,6 +34,7 @@
 #include "riddle_decide.h"
 #include "wake_log.h"
 #include "kids.h"
+#include "weather.h"
 #include "page_common.h"
 #include "epaper_port.h"
 #include "GUI_Paint.h"
@@ -84,6 +86,27 @@ static const char *TAG = "riddle";
 #define NVS_KEY_LOG   "wakelog"
 #define NVS_KEY_KIDS  "kids"
 #define PATH_KIDS_SD  "/sdcard/kids.json"
+#define NVS_KEY_WX    "weather"
+
+// Coordinates are deliberately COARSE -- city centre, not a home address.
+//
+// This firmware pushes to a PUBLIC fork, so anything compiled in here is
+// published. Tel Aviv's centre says "this device shows weather for a city of
+// half a million people", which reveals nothing; a precise lat/long would
+// publish where the family lives, and that is the same line decision 8A drew
+// when it kept the kids' names and birthdays out of riddles.json.
+//
+// Weather at this resolution is identical to weather at a street address, so
+// the precision buys nothing anyway. If a precise location is ever wanted, it
+// belongs in the SD config beside kids.json and never in a commit.
+#define WX_LAT "32.08"
+#define WX_LON "34.78"
+#define WX_URL "https://api.open-meteo.com/v1/forecast?latitude=" WX_LAT \
+               "&longitude=" WX_LON \
+               "&current=temperature_2m,weather_code" \
+               "&daily=temperature_2m_max,temperature_2m_min,weather_code" \
+               "&timezone=Asia/Jerusalem&forecast_days=1"
+#define WX_MAX_SIZE 4096
 
 typedef struct {
     char q[Q_MAX];
@@ -198,6 +221,83 @@ static void log_load(void)
         len == sizeof s_ring && wake_ring_valid(&tmp))
         s_ring = tmp;
     nvs_close(h);
+}
+
+// --------------------------------------------------------------- weather ----
+//
+// The pure half -- parsing, the WMO-to-icon map, staleness -- lives in
+// weather.c and is host-tested. This is only the I/O: fetch, and the NVS cache
+// that lets the afternoon draw a zone whose data was fetched nine hours and one
+// power cycle ago. (Eng review D4.)
+
+static time_t now_utc(void);      // defined with the entry points
+
+static weather_t s_wx;
+
+static void weather_load(void)
+{
+    memset(&s_wx, 0, sizeof s_wx);
+    nvs_handle_t h;
+    if (nvs_open(NVS_NS, NVS_READONLY, &h) != ESP_OK) return;
+    size_t len = sizeof s_wx;
+    weather_t tmp;
+    if (nvs_get_blob(h, NVS_KEY_WX, &tmp, &len) == ESP_OK && len == sizeof s_wx)
+        s_wx = tmp;
+    nvs_close(h);
+}
+
+static void weather_store(const weather_t *w)
+{
+    nvs_handle_t h;
+    if (nvs_open(NVS_NS, NVS_READWRITE, &h) != ESP_OK) return;
+    nvs_set_blob(h, NVS_KEY_WX, w, sizeof *w);
+    nvs_commit(h);
+    nvs_close(h);
+}
+
+// Fetches and caches. A failure leaves the previous reading in place, which is
+// the whole point: the page shows stale weather rather than a hole, and
+// premise 4 promised exactly that. Never blocks the riddle.
+// Refresh on the MORNING wake only. The afternoon draws the same page from the
+// cache: that reading is about nine hours old, which is what
+// WEATHER_STALE_SECS is calibrated against, and a second fetch would double
+// the network cost and the failure surface for no benefit.
+static void weather_refresh(void)
+{
+    if (!wifi_enable) { log_outcome(WO_FETCH_FAILED); return; }
+    esp_netif_t *nif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    esp_netif_ip_info_t ip;
+    if (!nif || esp_netif_get_ip_info(nif, &ip) != ESP_OK || !ip.ip.addr) {
+        log_outcome(WO_FETCH_FAILED);
+        return;
+    }
+
+    char *buf = (char *)heap_caps_malloc(WX_MAX_SIZE, MALLOC_CAP_SPIRAM);
+    if (!buf) { ESP_LOGE(TAG, "no PSRAM for the weather buffer"); return; }
+
+    size_t got = 0;
+    pc_fetch_status_t s = pc_fetch_url(WX_URL, buf, WX_MAX_SIZE, &got);
+    if (s == PC_FETCH_OK) {
+        weather_t w;
+        // Parse into a local: weather_parse leaves its output untouched on
+        // failure, so a malformed response cannot clobber a good cached value.
+        if (weather_parse(buf, &w)) {
+            w.fetched_at = (uint32_t)now_utc();
+            s_wx = w;
+            weather_store(&w);
+            ESP_LOGI(TAG, "weather %d.%dC, %s (wmo %u)",
+                     w.temp_x10 / 10, abs(w.temp_x10 % 10),
+                     wmo_label(w.wmo), (unsigned)w.wmo);
+        } else {
+            ESP_LOGW(TAG, "weather response did not parse; keeping the cache");
+            log_outcome(WO_PARSE_FAILED);
+        }
+    } else {
+        ESP_LOGW(TAG, "weather fetch: %s", pc_fetch_strerror(s));
+        log_outcome((s == PC_FETCH_TRUNCATED || s == PC_FETCH_SHORT)
+                    ? WO_FETCH_PARTIAL : WO_FETCH_FAILED);
+    }
+    heap_caps_free(buf);
 }
 
 // ------------------------------------------------------------------ kids ----
@@ -696,6 +796,7 @@ static bool ensure_batch(const riddle_nvs_t *st)
     }
     kids_load();
     kids_import_from_sd();      // no card, or no file, is the normal case
+    weather_load();             // cache only; the fetch is morning-only
     if (s_count == 0) load_batch(remaining_of(st));
     return s_count > 0;
 }
@@ -849,6 +950,15 @@ void page_riddle_ambient(int reason)
 
     riddle_nvs_t st;
     state_load(&st);
+
+    // Weather before the batch check, deliberately. An empty riddle queue must
+    // not also cost the weather zone -- the daily page still has a date, a
+    // schedule and a temperature to show, and "no riddles yet" is a smaller
+    // failure than a page that gives up entirely. weather_load is one NVS read
+    // and idempotent, so calling it here and in ensure_batch costs nothing.
+    weather_load();
+    if (reason == WAKE_MORNING) weather_refresh();
+
     if (!ensure_batch(&st)) {
         log_outcome(WO_NO_BATCH);
         pc_draw_message("No riddles yet.",
