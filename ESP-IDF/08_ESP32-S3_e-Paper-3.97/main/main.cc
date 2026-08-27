@@ -303,20 +303,25 @@ void user_Task(void *arg)
     // you see. Function double-click returns here, so the menu is one gesture
     // away and nothing becomes unreachable -- which is the only reason this is
     // safe to do (eng review D3).
-    page_riddle_show();
-
     // Any NON-alarm boot -- the reset button, a battery blip, plugging in USB
     // -- takes the recovery path above and forces the boot mode back to 0.
     // That is correct as a recovery, but it also silently cancels auto mode
     // while leaving the RTC alarm armed: the board would still wake at 06:30
-    // and then just sit in the menu, having forgotten it had a job. Re-arming
-    // here puts the mode and the alarm back.
+    // and then just sit in the menu, having forgotten it had a job.
+    //
+    // BEFORE the page, not after. page_riddle_show() blocks until someone
+    // presses a button, so re-arming underneath it means the alarm is only
+    // restored if a person happens to walk past and press Function twice --
+    // which is precisely the failure this exists to prevent. Verified the
+    // hard way: the first version logged nothing at all on boot.
     //
     // This does mean a reset no longer escapes auto mode. It does not need to:
-    // Boot-click on the page above turns it off, and the menu is a Function
+    // Boot-click on the daily page turns it off, and the menu is a Function
     // double-click away.
     if (sched_ambient_enabled() && !sched_arm_next())
         ESP_LOGW("main", "auto mode is on but the alarm did NOT re-arm");
+
+    page_riddle_show();
 
     esp_home(home_selection, Global_refresh);
     xSemaphoreTake(rtc_mutex, portMAX_DELAY);
