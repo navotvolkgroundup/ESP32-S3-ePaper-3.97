@@ -305,6 +305,19 @@ void user_Task(void *arg)
     // safe to do (eng review D3).
     page_riddle_show();
 
+    // Any NON-alarm boot -- the reset button, a battery blip, plugging in USB
+    // -- takes the recovery path above and forces the boot mode back to 0.
+    // That is correct as a recovery, but it also silently cancels auto mode
+    // while leaving the RTC alarm armed: the board would still wake at 06:30
+    // and then just sit in the menu, having forgotten it had a job. Re-arming
+    // here puts the mode and the alarm back.
+    //
+    // This does mean a reset no longer escapes auto mode. It does not need to:
+    // Boot-click on the page above turns it off, and the menu is a Function
+    // double-click away.
+    if (sched_ambient_enabled() && !sched_arm_next())
+        ESP_LOGW("main", "auto mode is on but the alarm did NOT re-arm");
+
     esp_home(home_selection, Global_refresh);
     xSemaphoreTake(rtc_mutex, portMAX_DELAY);
     rtc_time = PCF85063_GetTime();
