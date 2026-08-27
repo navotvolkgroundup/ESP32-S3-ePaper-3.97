@@ -37,7 +37,17 @@ pc_button_t pc_button_classify(int code)
     case BTN_BOOT_BASE + EV_DOUBLE:    return PC_BTN_BACK;
     case BTN_BOOT_BASE + EV_CLICK:     return PC_BTN_POWER;
     case BTN_FN_BASE   + EV_LONG_ONCE: return PC_BTN_REFRESH;
-    case BTN_BOOT_BASE + EV_LONG_HOLD: return PC_BTN_SETTINGS;
+    // BOOT'S LONG PRESS IS 26, NOT 27. Boot is numbered base+0..6 like the
+    // others, but button_bsp.c's LONG_PRESS_HOLD arm for Boot_id sets bit 23
+    // -- the same bit as PRESS_DOWN -- instead of 27. So base+EV_LONG_HOLD was
+    // dead and the wake log could not be opened at all.
+    //
+    // 23 is NOT the fix, tempting as it looks: it fires on every Boot
+    // PRESS_DOWN, so mapping it here would open the wake log on every ordinary
+    // Boot click, before the click itself was even classified. 26 is
+    // LONG_PRESS_START for Boot and nothing else, so it fires once per long
+    // press and is unambiguous.
+    case BTN_BOOT_BASE + EV_LONG_ONCE: return PC_BTN_SETTINGS;
     default:                           return PC_BTN_IGNORE;
     }
 }

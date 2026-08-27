@@ -10,8 +10,8 @@ CC      ?= cc
 CFLAGS  ?= -std=c99 -Wall -Wextra -Werror -O1 -g
 BUILD   := build-host
 
-.PHONY: test clean icons
-test: $(BUILD)/run_tests $(BUILD)/link_check icons
+.PHONY: test clean icons buttons
+test: $(BUILD)/run_tests $(BUILD)/link_check icons buttons
 	@$(BUILD)/link_check
 	@$(BUILD)/run_tests
 
@@ -28,6 +28,12 @@ icons:
 	  fi; \
 	done; \
 	[ $$missing -eq 0 ] && echo "icon check OK: every wmo_icon() name has a bitmap"
+
+# Cross-artifact check: the button classifier against the BSP that feeds it.
+# Catches dead arms (a code nothing emits) and ambiguous ones (a code several
+# events share). Both shipped; see the script header.
+buttons:
+	@python3 tests/check_buttons.py
 
 # cJSON comes from the IDF checkout but is a vendored library, not IDF itself,
 # so weather.c stays host-compilable and its PARSING is testable, not just the
