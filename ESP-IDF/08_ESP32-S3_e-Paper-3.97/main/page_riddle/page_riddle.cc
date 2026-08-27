@@ -35,6 +35,8 @@
 #include "wake_log.h"
 #include "kids.h"
 #include "weather.h"
+#include "schedule.h"
+#include "sd_json.h"
 #include "page_common.h"
 #include "epaper_port.h"
 #include "GUI_Paint.h"
@@ -87,6 +89,8 @@ static const char *TAG = "riddle";
 #define NVS_KEY_KIDS  "kids"
 #define PATH_KIDS_SD  "/sdcard/kids.json"
 #define NVS_KEY_WX    "weather"
+#define NVS_KEY_SCHED "sched"
+#define PATH_SCHED_SD "/sdcard/schedule.json"
 
 // Coordinates are deliberately COARSE -- city centre, not a home address.
 //
@@ -341,11 +345,12 @@ static void kids_store(const kids_t *k)
 static void kids_import_from_sd(void)
 {
     char buf[1024];
-    FILE *f = fopen(PATH_KIDS_SD, "r");
-    if (!f) return;
-    size_t n = fread(buf, 1, sizeof buf - 1, f);
-    fclose(f);
-    buf[n] = 0;
+    sdj_status_e rd = sdj_read(PATH_KIDS_SD, buf, sizeof buf, NULL);
+    if (rd == SDJ_ABSENT) return;                    // no card: the normal case
+    if (rd != SDJ_OK) {
+        ESP_LOGW(TAG, "kids.json: %s", sdj_strerror(rd));
+        return;
+    }
 
     cJSON *root = cJSON_Parse(buf);
     if (!root) { ESP_LOGW(TAG, "kids.json did not parse; ignoring it"); return; }
@@ -377,6 +382,53 @@ static void kids_import_from_sd(void)
         s_kids = k;
         kids_store(&k);
         ESP_LOGI(TAG, "imported %d kid(s) from the SD card", k.count);
+    }
+}
+
+// -------------------------------------------------------------- schedule ----
+//
+// Same shape as kids: SD card into NVS, so the card can be removed afterwards.
+// The timetable stays off any public URL -- it reveals a school, a class and a
+// routine, which 30 riddles do not. (CEO review 8A's line, applied again.)
+
+static schedule_t s_sched;
+
+static void schedule_load(void)
+{
+    memset(&s_sched, 0, sizeof s_sched);
+    nvs_handle_t h;
+    if (nvs_open(NVS_NS, NVS_READONLY, &h) != ESP_OK) return;
+    size_t len = sizeof s_sched;
+    schedule_t tmp;
+    if (nvs_get_blob(h, NVS_KEY_SCHED, &tmp, &len) == ESP_OK && len == sizeof s_sched)
+        s_sched = tmp;
+    nvs_close(h);
+}
+
+static void schedule_import_from_sd(void)
+{
+    char buf[2048];
+    sdj_status_e rd = sdj_read(PATH_SCHED_SD, buf, sizeof buf, NULL);
+    if (rd == SDJ_ABSENT) return;
+    if (rd != SDJ_OK) {
+        ESP_LOGW(TAG, "schedule.json: %s", sdj_strerror(rd));
+        return;
+    }
+
+    schedule_t sc;
+    if (!schedule_parse(buf, &sc)) {
+        ESP_LOGW(TAG, "schedule.json did not parse; keeping the stored one");
+        return;
+    }
+    if (memcmp(&sc, &s_sched, sizeof sc) != 0) {
+        s_sched = sc;
+        nvs_handle_t h;
+        if (nvs_open(NVS_NS, NVS_READWRITE, &h) == ESP_OK) {
+            nvs_set_blob(h, NVS_KEY_SCHED, &sc, sizeof sc);
+            nvs_commit(h);
+            nvs_close(h);
+        }
+        ESP_LOGI(TAG, "imported a schedule from the SD card");
     }
 }
 
@@ -797,6 +849,8 @@ static bool ensure_batch(const riddle_nvs_t *st)
     kids_load();
     kids_import_from_sd();      // no card, or no file, is the normal case
     weather_load();             // cache only; the fetch is morning-only
+    schedule_load();
+    schedule_import_from_sd();  // no card, or no file, is the normal case
     if (s_count == 0) load_batch(remaining_of(st));
     return s_count > 0;
 }

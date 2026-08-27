@@ -35,9 +35,11 @@ icons:
 CJSON_DIR ?= $(HOME)/esp/esp-idf/components/json/cJSON
 
 SRC := tests/run_tests.c main/page_riddle/riddle_decide.c main/page_riddle/wake_log.c \
-       main/page_riddle/kids.c main/page_riddle/weather.c $(CJSON_DIR)/cJSON.c
+       main/page_riddle/kids.c main/page_riddle/weather.c \
+       main/page_riddle/schedule.c main/page_riddle/sd_json.c $(CJSON_DIR)/cJSON.c
 HDR := main/page_riddle/riddle_decide.h main/page_riddle/wake_log.h \
-       main/page_riddle/kids.h main/page_riddle/weather.h
+       main/page_riddle/kids.h main/page_riddle/weather.h \
+       main/page_riddle/schedule.h main/page_riddle/sd_json.h
 
 $(BUILD)/run_tests: $(SRC) $(HDR) | $(BUILD)
 	$(CC) $(CFLAGS) -Imain/page_riddle -I$(CJSON_DIR) -o $@ $(SRC) -lm
@@ -47,13 +49,14 @@ $(BUILD)/run_tests: $(SRC) $(HDR) | $(BUILD)
 # unit's header survives a clean `idf.py build`. This catches it in a second.
 CXX     ?= c++
 PURE    := main/page_riddle/riddle_decide.c main/page_riddle/wake_log.c \
-           main/page_riddle/kids.c main/page_riddle/weather.c
+           main/page_riddle/kids.c main/page_riddle/weather.c \
+           main/page_riddle/schedule.c main/page_riddle/sd_json.c
 
 # The .c files must be compiled AS C (cc), then linked with the C++ object.
 # Letting c++ compile them would make everything C++ and mask the very
 # mismatch this target exists to find.
 PURE_O  := $(BUILD)/riddle_decide.o $(BUILD)/wake_log.o $(BUILD)/kids.o \
-           $(BUILD)/weather.o $(BUILD)/cJSON.o
+           $(BUILD)/weather.o $(BUILD)/schedule.o $(BUILD)/sd_json.o $(BUILD)/cJSON.o
 
 $(BUILD)/%.o: main/page_riddle/%.c $(HDR) | $(BUILD)
 	$(CC) $(CFLAGS) -Imain/page_riddle -I$(CJSON_DIR) -c -o $@ $<

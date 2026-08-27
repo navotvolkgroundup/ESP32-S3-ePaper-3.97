@@ -23,6 +23,8 @@
 #include "wake_log.h"
 #include "kids.h"
 #include "weather.h"
+#include "schedule.h"
+#include "sd_json.h"
 
 #include <cstdio>
 
@@ -51,6 +53,14 @@ __attribute__((used)) void *const volatile kRefs[] = {
     (void *)wmo_label,
     (void *)weather_parse,
     (void *)weather_is_stale,
+
+    (void *)schedule_weekday,
+    (void *)schedule_parse,
+    (void *)schedule_for_day,
+    (void *)schedule_is_empty,
+
+    (void *)sdj_read,
+    (void *)sdj_strerror,
 };
 
 }  // namespace

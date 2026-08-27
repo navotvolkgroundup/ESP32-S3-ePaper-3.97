@@ -15,6 +15,8 @@
 #include "wake_log.h"
 #include "kids.h"
 #include "weather.h"
+#include "schedule.h"
+#include "sd_json.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -545,6 +547,126 @@ static int test_weather_staleness(void)
     return 0;
 }
 
+// --------------------------------------------------------------- schedule ---
+static int test_schedule_weekday(void)
+{
+    // Verified against a calendar, not derived. 1970-01-01 was a Thursday.
+    CHECK(schedule_weekday(0)     == 4);   // 1970-01-01 Thu
+    CHECK(schedule_weekday(20454) == 4);   // 2026-01-01 Thu
+    CHECK(schedule_weekday(20692) == 4);   // 2026-08-27 Thu
+    CHECK(schedule_weekday(20694) == 6);   // 2026-08-29 Sat
+    CHECK(schedule_weekday(20695) == 0);   // 2026-08-30 Sun
+
+    // A full week advances exactly one index and wraps once.
+    for (int32_t d = 20692; d < 20692 + 14; d++)
+        CHECK(schedule_weekday(d) == (int)((d + 4) % 7));
+    // Pre-epoch must not index off the front of the array. C's % gives a
+    // negative remainder for negative operands, which is the bug this guards.
+    for (int32_t d = -400; d < 0; d++) {
+        int w = schedule_weekday(d);
+        CHECK(w >= 0 && w < SCHED_DAYS);
+    }
+    return 0;
+}
+
+static int test_schedule_parse(void)
+{
+    schedule_t s;
+    memset(&s, 0xAA, sizeof s);
+
+    // Hebrew subjects, days named rather than indexed.
+    const char *doc =
+        "{\"days\":{"
+        "\"sun\":[\"מתמטיקה\",\"אנגלית\"],"
+        "\"thu\":[\"ספורט\"]"
+        "}}";
+    CHECK(schedule_parse(doc, &s));
+    CHECK(!schedule_is_empty(&s));
+
+    // Sunday joins with an ASCII separator, because the middle dot the design
+    // doc used is not drawable by hebrew.inc.
+    CHECK(strcmp(s.line[0], "מתמטיקה, אנגלית") == 0);
+    CHECK(strcmp(s.line[4], "ספורט") == 0);
+    CHECK(s.line[1][0] == 0);                      // omitted day, empty
+    CHECK(strcmp(schedule_for_day(&s, 20695), "מתמטיקה, אנגלית") == 0);  // a Sunday
+    CHECK(strcmp(schedule_for_day(&s, 20694), "") == 0);                  // a Saturday
+    CHECK(strcmp(schedule_for_day(NULL, 20695), "") == 0);
+
+    // Undrawable subjects are skipped, not rendered as holes. The rest of the
+    // day survives.
+    schedule_t u;
+    memset(&u, 0, sizeof u);
+    CHECK(schedule_parse("{\"days\":{\"mon\":[\"שָלום\",\"ספורט\"]}}", &u));
+    CHECK(strcmp(u.line[1], "ספורט") == 0);
+
+    // A document that is not a schedule leaves a good one untouched.
+    schedule_t good = s;
+    CHECK(!schedule_parse("{ not json", &good));
+    CHECK(strcmp(good.line[0], "מתמטיקה, אנגלית") == 0);
+    CHECK(!schedule_parse("{}", &good));
+    CHECK(strcmp(good.line[0], "מתמטיקה, אנגלית") == 0);
+    CHECK(!schedule_parse(NULL, &good));
+
+    // Empty is legal and means the zone does not draw.
+    schedule_t e;
+    memset(&e, 0, sizeof e);
+    CHECK(schedule_parse("{\"days\":{}}", &e));
+    CHECK(schedule_is_empty(&e));
+    CHECK(schedule_is_empty(NULL));
+
+    // An over-long day stops cleanly at a subject boundary rather than
+    // emitting half a word.
+    schedule_t o;
+    memset(&o, 0, sizeof o);
+    CHECK(schedule_parse("{\"days\":{\"sun\":["
+        "\"אאאאאאאאאא\",\"בבבבבבבבבב\",\"גגגגגגגגגג\",\"דדדדדדדדדד\","
+        "\"הההההההההה\",\"וווווווווו\",\"זזזזזזזזזז\",\"חחחחחחחחחח\"]}}", &o));
+    CHECK(strlen(o.line[0]) < SCHED_LINE_MAX);
+    CHECK(o.line[0][strlen(o.line[0]) - 1] != ' ');   // no dangling separator
+    return 0;
+}
+
+// ---------------------------------------------------------------- sd_json ---
+static int test_sd_json(void)
+{
+    char buf[64];
+    size_t len = 12345;
+
+    CHECK(sdj_read("/nonexistent/nope.json", buf, sizeof buf, &len) == SDJ_ABSENT);
+    CHECK(len == 0);
+
+    const char *tmp = "/tmp/gstack-sdj-test.json";
+    FILE *f = fopen(tmp, "w"); CHECK(f != NULL);
+    fputs("{\"a\":1}", f); fclose(f);
+    CHECK(sdj_read(tmp, buf, sizeof buf, &len) == SDJ_OK);
+    CHECK(len == 7 && strcmp(buf, "{\"a\":1}") == 0);
+
+    // Empty file is distinguishable from absent.
+    f = fopen(tmp, "w"); CHECK(f != NULL); fclose(f);
+    CHECK(sdj_read(tmp, buf, sizeof buf, &len) == SDJ_EMPTY);
+
+    // THE POINT: an oversized file is TOO_BIG, not a silent fragment that then
+    // fails to parse and reports the wrong cause.
+    f = fopen(tmp, "w"); CHECK(f != NULL);
+    for (int i = 0; i < 200; i++) fputc('x', f);
+    fclose(f);
+    CHECK(sdj_read(tmp, buf, sizeof buf, &len) == SDJ_TOO_BIG);
+    CHECK(buf[0] == 0);            // no fragment handed back
+    CHECK(len == 0);
+
+    // Exactly filling the buffer is OK, one over is not.
+    f = fopen(tmp, "w"); for (int i = 0; i < 63; i++) fputc('y', f); fclose(f);
+    CHECK(sdj_read(tmp, buf, sizeof buf, &len) == SDJ_OK && len == 63);
+    f = fopen(tmp, "w"); for (int i = 0; i < 64; i++) fputc('y', f); fclose(f);
+    CHECK(sdj_read(tmp, buf, sizeof buf, &len) == SDJ_TOO_BIG);
+
+    CHECK(sdj_read(NULL, buf, sizeof buf, &len) == SDJ_IO);
+    CHECK(sdj_read(tmp, buf, 1, &len) == SDJ_IO);
+    CHECK(strcmp(sdj_strerror(SDJ_TOO_BIG), "file is larger than the buffer") == 0);
+    remove(tmp);
+    return 0;
+}
+
 int main(void)
 {
     struct { const char *name; int (*fn)(void); } tests[] = {
@@ -560,6 +682,9 @@ int main(void)
         { "weather_parse",     test_weather_parse },
         { "weather_icons",     test_weather_icons },
         { "weather_staleness", test_weather_staleness },
+        { "schedule_weekday",  test_schedule_weekday },
+        { "schedule_parse",    test_schedule_parse },
+        { "sd_json",           test_sd_json },
     };
     for (unsigned i = 0; i < sizeof tests / sizeof tests[0]; i++) {
         if (tests[i].fn()) {

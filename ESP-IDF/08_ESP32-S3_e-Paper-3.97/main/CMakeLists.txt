@@ -15,6 +15,8 @@ idf_component_register(
         "page_riddle/wake_log.c"
         "page_riddle/kids.c"
         "page_riddle/weather.c"
+        "page_riddle/schedule.c"
+        "page_riddle/sd_json.c"
         "sched/sched.c"
         "page_common/page_common.cc"
         "page_riddle/page_riddle.cc"
