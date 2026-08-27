@@ -138,7 +138,7 @@ bool check_alarm(uint8_t hour, uint8_t minute) {
 
 // Print all the alarm clocks
 void print_alarms(void) {
-    printf("当前闹钟：\n");
+    printf("Current alarm:\n");
     for (int i = 0; i < MAX_ALARMS; ++i) {
         if (alarms[i].enabled) {
             printf("%02d:%02d\n", alarms[i].hour, alarms[i].minute);
@@ -531,7 +531,7 @@ static void display_alarm_init(void)
     Paint_DrawRectangle(375, 22, 375+BAT_Power, 30, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
     Paint_DrawLine(2, 54, EPD_HEIGHT-2, 54, BLACK, DOT_PIXEL_2X2, LINE_STYLE_SOLID);
 
-    Paint_DrawString_CN(20, 72, "闹钟", &Font18_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(20, 72, "Alarm", &Font18_UTF8, WHITE, BLACK);
 
     char hour_str[10] = {0};
     char minute_str[10] = {0};
@@ -552,11 +552,11 @@ static void display_alarm_init(void)
     if(alarms[0].enabled) {
         Paint_DrawRectangle(349, 149, 433, 185, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawRectangle(401, 153, 429, 181, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(365, 152, "开", &Font16_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(365, 152, "On", &Font16_UTF8, BLACK, WHITE);
     } else {
         Paint_DrawRectangle(349, 149, 433, 185, BLACK, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
         Paint_DrawRectangle(353, 153, 381, 181, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(397, 152, "关", &Font16_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(397, 152, "Off", &Font16_UTF8, WHITE, BLACK);
     }
     Paint_DrawRectangle(20, 122, 460, 212, BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY);
 
@@ -576,11 +576,11 @@ static void display_alarm_init(void)
     if(alarms[1].enabled) {
         Paint_DrawRectangle(349, 259, 433, 295, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawRectangle(401, 263, 429, 291, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(365, 262, "开", &Font16_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(365, 262, "On", &Font16_UTF8, BLACK, WHITE);
     } else {
         Paint_DrawRectangle(349, 259, 433, 295, BLACK, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
         Paint_DrawRectangle(353, 263, 381, 291, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(397, 262, "关", &Font16_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(397, 262, "Off", &Font16_UTF8, WHITE, BLACK);
     }
 
     Paint_DrawRectangle(20, 232, 460, 322, BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY);
@@ -601,11 +601,11 @@ static void display_alarm_init(void)
     if(alarms[2].enabled) {
         Paint_DrawRectangle(349, 369, 433, 405, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawRectangle(401, 373, 429, 401, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(365, 372, "开", &Font16_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(365, 372, "On", &Font16_UTF8, BLACK, WHITE);
     } else {
         Paint_DrawRectangle(349, 369, 433, 405, BLACK, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
         Paint_DrawRectangle(353, 373, 381, 401, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(397, 372, "关", &Font16_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(397, 372, "Off", &Font16_UTF8, WHITE, BLACK);
     }
 
     Paint_DrawRectangle(20, 342, 460, 432, BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY);
@@ -626,11 +626,11 @@ static void display_alarm_init(void)
     if(alarms[3].enabled) {
         Paint_DrawRectangle(349, 479, 433, 515, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawRectangle(401, 483, 429, 511, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(365, 482, "开", &Font16_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(365, 482, "On", &Font16_UTF8, BLACK, WHITE);
     } else {
         Paint_DrawRectangle(349, 479, 433, 515, BLACK, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
         Paint_DrawRectangle(353, 483, 381, 511, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(397, 482, "关", &Font16_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(397, 482, "Off", &Font16_UTF8, WHITE, BLACK);
     }
 
     Paint_DrawRectangle(20, 452, 460, 542, BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY);
@@ -651,15 +651,15 @@ static void display_alarm_init(void)
     if(alarms[4].enabled) {
         Paint_DrawRectangle(349, 589, 433, 625, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawRectangle(401, 593, 429, 621, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(365, 592, "开", &Font16_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(365, 592, "On", &Font16_UTF8, BLACK, WHITE);
     } else {
         Paint_DrawRectangle(349, 589, 433, 625, BLACK, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
         Paint_DrawRectangle(353, 593, 381, 621, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(397, 592, "关", &Font16_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(397, 592, "Off", &Font16_UTF8, WHITE, BLACK);
     }
 
     Paint_DrawRectangle(20, 562, 460, 652, BLACK, DOT_PIXEL_2X2, DRAW_FILL_EMPTY);
-    Paint_DrawString_CN(184, 700, " 退出 ", &Font24_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(184, 700, " Exit ", &Font24_UTF8, WHITE, BLACK);
 
     EPD_Display_Partial(Image_alarm,0,0,EPD_WIDTH,EPD_HEIGHT);
 }
@@ -701,42 +701,42 @@ static void display_alarm_selection(int count)
         Paint_DrawCircle(65, 387, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 497, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 607, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(184, 700, " 退出 ", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(184, 700, " Exit ", &Font24_UTF8, WHITE, BLACK);
     } else if(count == 1){
         Paint_DrawCircle(65, 167, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 277, 12, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 387, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 497, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 607, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(184, 700, " 退出 ", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(184, 700, " Exit ", &Font24_UTF8, WHITE, BLACK);
     } else if(count == 2){
         Paint_DrawCircle(65, 167, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 277, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 387, 12, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 497, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 607, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(184, 700, " 退出 ", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(184, 700, " Exit ", &Font24_UTF8, WHITE, BLACK);
     } else if(count == 3){
         Paint_DrawCircle(65, 167, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 277, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 387, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 497, 12, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 607, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(184, 700, " 退出 ", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(184, 700, " Exit ", &Font24_UTF8, WHITE, BLACK);
     } else if(count == 4){
         Paint_DrawCircle(65, 167, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 277, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 387, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 497, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 607, 12, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(184, 700, " 退出 ", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(184, 700, " Exit ", &Font24_UTF8, WHITE, BLACK);
     } else if(count == 5){
         Paint_DrawCircle(65, 167, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 277, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 387, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 497, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
         Paint_DrawCircle(65, 607, 12, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(184, 700, " 退出 ", &Font24_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(184, 700, " Exit ", &Font24_UTF8, BLACK, WHITE);
     }
 
     EPD_Display_Partial(Image_alarm,0,0,EPD_WIDTH,EPD_HEIGHT);
@@ -746,7 +746,7 @@ static void display_alarm_selection(int count)
 static void display_alarm_option(void)
 {
     Paint_DrawRectangle(10, 670, 480, 780, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    Paint_DrawString_CN(208, 700, " 退出 ", &Font24_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(208, 700, " Exit ", &Font24_UTF8, WHITE, BLACK);
     EPD_Display_Partial(Image_alarm,0,0,EPD_WIDTH,EPD_HEIGHT);
 }
 
@@ -756,10 +756,10 @@ static void display_alarm_option_img(void)
 
     Paint_DrawRectangle(75, 675, 140, 714, BLACK, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
 
-    Paint_DrawString_CN(79, 680, " 时 ", &Font16_UTF8, WHITE, BLACK);
-    Paint_DrawString_CN(300, 680, " 分 ", &Font16_UTF8, WHITE, BLACK);
-    Paint_DrawString_CN(79, 740, " 开/关 ", &Font16_UTF8, WHITE, BLACK);
-    Paint_DrawString_CN(300, 740, " 保存退出 ", &Font16_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(79, 680, " h ", &Font16_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(300, 680, " m ", &Font16_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(79, 740, " On/Off ", &Font16_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(300, 740, " Save and exit ", &Font16_UTF8, WHITE, BLACK);
 
     EPD_Display_Partial(Image_alarm,0,0,EPD_WIDTH,EPD_HEIGHT);
 }
@@ -772,16 +772,16 @@ static void display_alarm_option_img_Up_Down(int count, int enabled)
         Paint_DrawRectangle(296, 735, 433, 774, WHITE, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
 
         Paint_DrawRectangle(75, 675, 140, 714, BLACK, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
-        if(enabled) Paint_DrawString_CN(79, 680, " 时 ", &Font16_UTF8, BLACK, WHITE);
-        else Paint_DrawString_CN(79, 680, " 时 ", &Font16_UTF8, WHITE, BLACK);
+        if(enabled) Paint_DrawString_CN(79, 680, " h ", &Font16_UTF8, BLACK, WHITE);
+        else Paint_DrawString_CN(79, 680, " h ", &Font16_UTF8, WHITE, BLACK);
     } else if(count == 1) {
         Paint_DrawRectangle(75, 675, 140, 714, WHITE, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
         Paint_DrawRectangle(75, 735, 180, 774, WHITE, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
         Paint_DrawRectangle(296, 735, 433, 774, WHITE, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
 
         Paint_DrawRectangle(296, 675, 361, 714, BLACK, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
-        if(enabled) Paint_DrawString_CN(300, 680, " 分 ", &Font16_UTF8, BLACK, WHITE);
-        else Paint_DrawString_CN(300, 680, " 分 ", &Font16_UTF8, WHITE, BLACK);
+        if(enabled) Paint_DrawString_CN(300, 680, " m ", &Font16_UTF8, BLACK, WHITE);
+        else Paint_DrawString_CN(300, 680, " m ", &Font16_UTF8, WHITE, BLACK);
     
     } else if(count == 2) {
         Paint_DrawRectangle(75, 675, 140, 714, WHITE, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
@@ -789,14 +789,14 @@ static void display_alarm_option_img_Up_Down(int count, int enabled)
         Paint_DrawRectangle(296, 735, 433, 774, WHITE, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
 
         Paint_DrawRectangle(75, 735, 180, 774, BLACK, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
-        Paint_DrawString_CN(79, 740, " 开/关 ", &Font16_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(79, 740, " On/Off ", &Font16_UTF8, WHITE, BLACK);
     } else if(count == 3) {
         Paint_DrawRectangle(75, 675, 140, 714, WHITE, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
         Paint_DrawRectangle(296, 675, 361, 714, WHITE, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
         Paint_DrawRectangle(75, 735, 180, 774, WHITE, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
 
         Paint_DrawRectangle(296, 735, 433, 774, BLACK, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
-        Paint_DrawString_CN(300, 740, " 保存退出 ", &Font16_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(300, 740, " Save and exit ", &Font16_UTF8, WHITE, BLACK);
     }
 
     EPD_Display_Partial(Image_alarm,0,0,EPD_WIDTH,EPD_HEIGHT);
@@ -862,57 +862,57 @@ static void display_alarm_enabled_img(int enabled, int count, int en)
         if(enabled) {
             Paint_DrawRectangle(349, 149, 433, 185, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
             Paint_DrawRectangle(401, 153, 429, 181, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-            Paint_DrawString_CN(365, 152, "开", &Font16_UTF8, BLACK, WHITE);
+            Paint_DrawString_CN(365, 152, "On", &Font16_UTF8, BLACK, WHITE);
         } else {
             Paint_DrawRectangle(349, 149, 433, 185, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
             Paint_DrawRectangle(349, 149, 433, 185, BLACK, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
             Paint_DrawRectangle(353, 153, 381, 181, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-            Paint_DrawString_CN(397, 152, "关", &Font16_UTF8, WHITE, BLACK);
+            Paint_DrawString_CN(397, 152, "Off", &Font16_UTF8, WHITE, BLACK);
         }
     } else if(count == 1){
         if(enabled) {
             Paint_DrawRectangle(349, 259, 433, 295, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
             Paint_DrawRectangle(401, 263, 429, 291, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-            Paint_DrawString_CN(365, 262, "开", &Font16_UTF8, BLACK, WHITE);
+            Paint_DrawString_CN(365, 262, "On", &Font16_UTF8, BLACK, WHITE);
         } else {
             Paint_DrawRectangle(349, 259, 433, 295, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
             Paint_DrawRectangle(349, 259, 433, 295, BLACK, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
             Paint_DrawRectangle(353, 263, 381, 291, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-            Paint_DrawString_CN(397, 262, "关", &Font16_UTF8, WHITE, BLACK);
+            Paint_DrawString_CN(397, 262, "Off", &Font16_UTF8, WHITE, BLACK);
         }
 
     } else if(count == 2){
         if(enabled) {
             Paint_DrawRectangle(349, 369, 433, 405, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
             Paint_DrawRectangle(401, 373, 429, 401, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-            Paint_DrawString_CN(365, 372, "开", &Font16_UTF8, BLACK, WHITE);
+            Paint_DrawString_CN(365, 372, "On", &Font16_UTF8, BLACK, WHITE);
         } else {
             Paint_DrawRectangle(349, 369, 433, 405, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
             Paint_DrawRectangle(349, 369, 433, 405, BLACK, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
             Paint_DrawRectangle(353, 373, 381, 401, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-            Paint_DrawString_CN(397, 372, "关", &Font16_UTF8, WHITE, BLACK);
+            Paint_DrawString_CN(397, 372, "Off", &Font16_UTF8, WHITE, BLACK);
         }
     } else if(count == 3){
         if(enabled) {
             Paint_DrawRectangle(349, 479, 433, 515, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
             Paint_DrawRectangle(401, 483, 429, 511, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-            Paint_DrawString_CN(365, 482, "开", &Font16_UTF8, BLACK, WHITE);
+            Paint_DrawString_CN(365, 482, "On", &Font16_UTF8, BLACK, WHITE);
         } else {
             Paint_DrawRectangle(349, 479, 433, 515, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
             Paint_DrawRectangle(349, 479, 433, 515, BLACK, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
             Paint_DrawRectangle(353, 483, 381, 511, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-            Paint_DrawString_CN(397, 482, "关", &Font16_UTF8, WHITE, BLACK);
+            Paint_DrawString_CN(397, 482, "Off", &Font16_UTF8, WHITE, BLACK);
         }
     } else if(count == 4){
         if(enabled) {
             Paint_DrawRectangle(349, 589, 433, 625, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
             Paint_DrawRectangle(401, 593, 429, 621, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-            Paint_DrawString_CN(365, 592, "开", &Font16_UTF8, BLACK, WHITE);
+            Paint_DrawString_CN(365, 592, "On", &Font16_UTF8, BLACK, WHITE);
         } else {
             Paint_DrawRectangle(349, 589, 433, 625, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
             Paint_DrawRectangle(349, 589, 433, 625, BLACK, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
             Paint_DrawRectangle(353, 593, 381, 621, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-            Paint_DrawString_CN(397, 592, "关", &Font16_UTF8, WHITE, BLACK);
+            Paint_DrawString_CN(397, 592, "Off", &Font16_UTF8, WHITE, BLACK);
         }
     }
     if(en) EPD_Display_Partial(Image_alarm,0,0,EPD_WIDTH,EPD_HEIGHT);

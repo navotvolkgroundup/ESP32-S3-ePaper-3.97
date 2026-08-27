@@ -1,0 +1,10 @@
+{
+  "_comment": "Copy to the SD card root as schedule.json. The board imports it into NVS on the next wake, so the card can come back out afterwards. Days are keyed by NAME, never by position: the Israeli school week starts on Sunday, and a file written assuming Monday is row zero would shift every day silently. Omit a day to leave that line blank -- correct for a weekend. Subjects must use Hebrew letters or plain ASCII only; the panel font draws nothing else, and anything undrawable is skipped whole rather than rendered with holes in it. Keep each day under about 40 Hebrew characters or the tail is dropped.",
+  "days": {
+    "sun": ["מתמטיקה", "אנגלית", "ספורט"],
+    "mon": ["עברית", "מדעים"],
+    "tue": ["מתמטיקה", "אמנות"],
+    "wed": ["אנגלית", "ספורט"],
+    "thu": ["עברית", "מוזיקה"]
+  }
+}

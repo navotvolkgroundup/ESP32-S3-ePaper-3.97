@@ -36,6 +36,9 @@
 #include "page_audio.h"
 #include "page_settings.h"
 #include "page_fiction.h"
+#include "page_news.h"
+#include "page_riddle.h"
+#include "sched.h"
 
 #include "freertos/semphr.h"
 
@@ -82,7 +85,11 @@ bool wifi_enable;
 uint8_t *Image_Mono;
 
 // Main menu content
-const char *home_page[HOME_PAGE_NUM] = {"文件","时钟","日历","闹钟","天气","网络","音频","阅读"};
+// Slot 0 was "Files" (the SD browser). Replaced by the riddle: the card's job
+// on this device is delivering riddles.json and kids.json, not being browsed,
+// and the riddle page is where auto-mode is switched on. file_browser_task()
+// is untouched in the tree -- restoring it is this line plus the dispatch below.
+const char *home_page[HOME_PAGE_NUM] = {"Riddle","Clock","Calendar","Alarm","Weather","Network","Audio","News"};
 
 // Log tag
 static const char *TAG = "main";
@@ -159,7 +166,7 @@ void esp_home(int selection, int Refresh_mode)
 
 // Use the built-in image or the TF card image
 #if defined(CONFIG_IMG_SOURCE_EMBEDDED)
-    Paint_ReadBmp(gImage_file,Icon_X_1,Icon_Y_1,96,96);
+    Paint_ReadBmp(gImage_riddle,Icon_X_1,Icon_Y_1,96,96);
     Paint_ReadBmp(gImage_clock,Icon_X_2,Icon_Y_1,96,96);
     Paint_ReadBmp(gImage_calendar,Icon_Y_1,Icon_Y_2,96,96);
     Paint_ReadBmp(gImage_alarm,Icon_X_2,Icon_Y_2,96,96);
@@ -291,6 +298,13 @@ void user_Task(void *arg)
     Time_data rtc_time = {0};
     int last_minutes = -1;
     
+    // Premise 1 of the daily-page design: the daily page is what a normal boot
+    // shows, and the eight-tile menu becomes somewhere you GO rather than what
+    // you see. Function double-click returns here, so the menu is one gesture
+    // away and nothing becomes unreachable -- which is the only reason this is
+    // safe to do (eng review D3).
+    page_riddle_show();
+
     esp_home(home_selection, Global_refresh);
     xSemaphoreTake(rtc_mutex, portMAX_DELAY);
     rtc_time = PCF85063_GetTime();
@@ -341,8 +355,16 @@ void user_Task(void *arg)
                     EPD_Sleep();
                     sleep_js++;
                     if(sleep_js > Unattended_Time){
-                        ESP_LOGI("home", "power off");
-                        axp_pwr_off();
+                        // With ambient mode on this arms the next 06:30/16:00
+                        // first and refuses to power off if the alarm does not
+                        // verify or USB is attached. With it off, behaves as
+                        // before.
+                        if (sched_ambient_enabled()) {
+                            sched_power_off_if_safe();
+                        } else {
+                            ESP_LOGI("home", "power off");
+                            axp_pwr_off();
+                        }
                     } 
                 }
             }
@@ -363,8 +385,9 @@ void user_Task(void *arg)
         } else if (button == 7) {
             // Enter the sub-menu
             if (home_selection == 0) {
-                // Enter File browsing
-                file_browser_task();
+                // Morning Riddle. Was file_browser_task(); restore that call
+                // and the label above to get the SD browser back.
+                page_riddle_show();
             } else if (home_selection == 1) {
                 // clock
                 page_clock_show();
@@ -384,7 +407,9 @@ void user_Task(void *arg)
                 // audio
                 page_audio_main();
             } else if (home_selection == 7) {
-                page_fiction_file();
+                // Techmeme RSS newspaper. Was page_fiction_file() (SD-card
+                // text reader); restore that call to get the fiction reader back.
+                page_news_show();
             } else {
                 ESP_LOGI("home", "entry page: %s", home_page[home_selection]);
                 // Other pages can be expanded here
@@ -435,6 +460,21 @@ static void weather_mode_task(void *arg)
     vTaskDelete(NULL);
 }
 
+// Ambient riddle wake. Draws, re-arms, powers off -- the whole daily cycle.
+static void riddle_mode_task(void *arg)
+{
+    page_riddle_ambient(sched_wake_slot());
+    // Re-arm and power down. sched refuses if USB is attached or the alarm
+    // does not verify, in which case the board stays awake on purpose.
+    //
+    // "On purpose" used to mean "and then nothing": riddle mode never creates
+    // the menu task, so a board that stayed awake had every control dead and
+    // no route to the Network tile. Function double-click is that route now.
+    // (Eng review D3.)
+    if (!sched_power_off_if_safe()) page_riddle_menu_escape();
+    vTaskDelete(NULL);
+}
+
 extern "C" void app_main(void)
 {
     ESP_ERROR_CHECK(nvs_flash_init());
@@ -456,6 +496,24 @@ extern "C" void app_main(void)
 
     // Initialize the power supply and perform mode judgment simultaneously
     axp_init();
+
+    // A CABLED BOARD MUST ALWAYS COME UP USABLE.
+    //
+    // The gate below powers the board off when it finds a non-zero boot mode
+    // with USB attached. sched_arm_next() legitimately leaves
+    // SCHED_MODE_RIDDLE in NVS, so plugging in a board that was in ambient
+    // mode gives you a board that powers itself off on every boot, before
+    // anything can clear the mode -- reachable only by holding BOOT for
+    // download mode. That is the single worst state this device can be in,
+    // because it is also the state in which you cannot flash your way out
+    // without knowing the trick.
+    //
+    // Clearing the mode BEFORE it is read makes that unreachable: USB present
+    // means menu-and-daily-page, always. Nothing is lost, because the ambient
+    // cycle cannot complete on USB anyway -- power-off is refused there to
+    // keep the board flashable.
+    if (get_usb_connected()) save_mode_enable_to_nvs(0);
+
     char mode = load_mode_enable_from_nvs();
     if(RTC_INT && mode!=0)
     {
@@ -494,6 +552,15 @@ extern "C" void app_main(void)
 
     // EPD_Init
     EPD_Init();
+    // Report what the panel actually did on the first init. There is no
+    // controller ID to read (MISO is not wired), so this timing is the only
+    // signal that would reveal a board revision with a different controller.
+    epd_log_panel_fingerprint();
+    // Same idea for the RTC: arm a daily alarm, read it back, log what the
+    // chip actually stored, restore. Decisions 2A (daily, not monthly) and 3A
+    // (verify the write) both rest on register behaviour, and this is the only
+    // way to see it on a board with no debugger attached.
+    PCF85063_log_alarm_fingerprint();
     // Create a data cache area for the e-paper
     if((Image_Mono = (UBYTE *)heap_caps_malloc(EPD_SIZE_MONO,MALLOC_CAP_SPIRAM)) == NULL) 
     {
@@ -516,6 +583,13 @@ extern "C" void app_main(void)
     } else if(mode == 3) {
         // weather
         xTaskCreate(weather_mode_task, "weather_mode", 12 * 1024, NULL, USER_TASK_PRIO, NULL);
+    } else if(mode == SCHED_MODE_RIDDLE) {
+        // Morning Riddle. 32KB rather than the 12KB the vendor modes use:
+        // those only ever speak plain HTTP (page_weather has no
+        // crt_bundle_attach), and a TLS handshake plus cert-bundle
+        // verification overruns a 12KB stack. The only proven HTTPS path on
+        // this board runs at 64KB. (Eng review E5.)
+        xTaskCreate(riddle_mode_task, "riddle_mode", 32 * 1024, NULL, USER_TASK_PRIO, NULL);
     } else {
         // Clear the alarm clock
         PCF85063_alarm_Time_Disable();

@@ -216,8 +216,8 @@ void page_audio_play_file(const char* file_path_name)
     }
 
     uint16_t x_or;
-    x_or = reassignCoordinates_CH(240, " 正在播放 ", &Font24_UTF8);
-    Paint_DrawString_CN(x_or, 256, " 正在播放 ", &Font24_UTF8, BLACK, WHITE);
+    x_or = reassignCoordinates_CH(240, " Playing ", &Font24_UTF8);
+    Paint_DrawString_CN(x_or, 256, " Playing ", &Font24_UTF8, BLACK, WHITE);
 
     char display_name[100]; 
     truncate_string_by_width(file_path_name, display_name, sizeof(display_name), 470, &Font24_UTF8);
@@ -228,7 +228,7 @@ void page_audio_play_file(const char* file_path_name)
     snprintf(Volume_str, sizeof(Volume_str), "%d%%", Volume);
     x_or = reassignCoordinates_CH(240, Volume_str, &Font24_UTF8);
     Paint_DrawString_CN(x_or, 466, Volume_str, &Font24_UTF8, WHITE, BLACK);
-    Paint_DrawString_CN(184, 700, " 暂停 ", &Font24_UTF8, BLACK, WHITE);
+    Paint_DrawString_CN(184, 700, " Pause ", &Font24_UTF8, BLACK, WHITE);
 
     Refresh_page_audio(Image_Mono_audio);
     // ESP_LOGI(TAG, "Start playing: %s", file_path);
@@ -292,14 +292,14 @@ void page_audio_play_file(const char* file_path_name)
 
                 // ESP_LOGI("home", "EPD_Init");
                 EPD_Init();
-                x_or = reassignCoordinates_CH(240, " 正在播放 ", &Font24_UTF8);
-                Paint_DrawString_CN(x_or, 256, " 正在播放 ", &Font24_UTF8, BLACK, WHITE);
-                Paint_DrawString_CN(184, 700, " 暂停 ", &Font24_UTF8, BLACK, WHITE);
+                x_or = reassignCoordinates_CH(240, " Playing ", &Font24_UTF8);
+                Paint_DrawString_CN(x_or, 256, " Playing ", &Font24_UTF8, BLACK, WHITE);
+                Paint_DrawString_CN(184, 700, " Pause ", &Font24_UTF8, BLACK, WHITE);
                 Refresh_page_audio(Image_Mono_audio);
 
-                x_or = reassignCoordinates_CH(240, " 暂停播放 ", &Font24_UTF8);
-                Paint_DrawString_CN(x_or, 256, " 暂停播放 ", &Font24_UTF8, BLACK, WHITE);
-                Paint_DrawString_CN(184, 700, " 继续 ", &Font24_UTF8, BLACK, WHITE);
+                x_or = reassignCoordinates_CH(240, " Paused ", &Font24_UTF8);
+                Paint_DrawString_CN(x_or, 256, " Paused ", &Font24_UTF8, BLACK, WHITE);
+                Paint_DrawString_CN(184, 700, " Resume ", &Font24_UTF8, BLACK, WHITE);
                 Refresh_page_audio(Image_Mono_audio);
                 // ESP_LOGI("home", "EPD_Sleep");
                 EPD_Sleep();
@@ -308,14 +308,14 @@ void page_audio_play_file(const char* file_path_name)
                 audio_player_resume();
                 // ESP_LOGI("home", "EPD_Init");
                 EPD_Init();
-                x_or = reassignCoordinates_CH(240, " 暂停播放 ", &Font24_UTF8);
-                Paint_DrawString_CN(x_or, 256, " 暂停播放 ", &Font24_UTF8, BLACK, WHITE);
-                Paint_DrawString_CN(184, 700, " 继续 ", &Font24_UTF8, BLACK, WHITE);
+                x_or = reassignCoordinates_CH(240, " Paused ", &Font24_UTF8);
+                Paint_DrawString_CN(x_or, 256, " Paused ", &Font24_UTF8, BLACK, WHITE);
+                Paint_DrawString_CN(184, 700, " Resume ", &Font24_UTF8, BLACK, WHITE);
                 Refresh_page_audio(Image_Mono_audio);
 
-                x_or = reassignCoordinates_CH(240, " 正在播放 ", &Font24_UTF8);
-                Paint_DrawString_CN(x_or, 256, " 正在播放 ", &Font24_UTF8, BLACK, WHITE);
-                Paint_DrawString_CN(184, 700, " 暂停 ", &Font24_UTF8, BLACK, WHITE);
+                x_or = reassignCoordinates_CH(240, " Playing ", &Font24_UTF8);
+                Paint_DrawString_CN(x_or, 256, " Playing ", &Font24_UTF8, BLACK, WHITE);
+                Paint_DrawString_CN(184, 700, " Pause ", &Font24_UTF8, BLACK, WHITE);
                 Refresh_page_audio(Image_Mono_audio);
                 // ESP_LOGI("home", "EPD_Sleep");
                 EPD_Sleep();
@@ -413,11 +413,11 @@ void page_audio_play_memory_1(void)
     display_audio_time(rtc_time);
 
     uint16_t x_or;
-    x_or = reassignCoordinates_CH(240, " 正在播放 ", &Font24_UTF8);
-    Paint_DrawString_CN(x_or, 256, " 正在播放 ", &Font24_UTF8, BLACK, WHITE);
+    x_or = reassignCoordinates_CH(240, " Playing ", &Font24_UTF8);
+    Paint_DrawString_CN(x_or, 256, " Playing ", &Font24_UTF8, BLACK, WHITE);
 
-    x_or = reassignCoordinates_CH(240, "内置音频文件", &Font24_UTF8);
-    Paint_DrawString_CN(x_or, 316, "内置音频文件", &Font24_UTF8, WHITE, BLACK);
+    x_or = reassignCoordinates_CH(240, "Built-in audio", &Font24_UTF8);
+    Paint_DrawString_CN(x_or, 316, "Built-in audio", &Font24_UTF8, WHITE, BLACK);
 
     Refresh_page_audio(Image_Mono_audio);
 
@@ -516,7 +516,7 @@ static int select_music_file(int menu_idx)
 
     file_entry_t* entries = (file_entry_t*)heap_caps_malloc(page_size * sizeof(file_entry_t), MALLOC_CAP_SPIRAM);
     if (!entries) {
-        ESP_LOGE(TAG, "文件列表内存分配失败");
+        ESP_LOGE(TAG, "Out of memory for the file list");
         return -1;
     }
     int total_num = 0;
@@ -526,8 +526,8 @@ static int select_music_file(int menu_idx)
     bool first_display = true;
 
     Paint_DrawRectangle(5, 58, 475, 799, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    uint16_t x_or = reassignCoordinates_CH(240, " 正在读取文件目录... ", &Font24_UTF8);
-    Paint_DrawString_CN(x_or, 410, " 正在读取文件目录... ", &Font24_UTF8, BLACK, WHITE);
+    uint16_t x_or = reassignCoordinates_CH(240, " Reading directory... ", &Font24_UTF8);
+    Paint_DrawString_CN(x_or, 410, " Reading directory... ", &Font24_UTF8, BLACK, WHITE);
     Refresh_page_audio(Image_Mono);
     Paint_DrawRectangle(5, 58, 475, 799, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
 
@@ -601,8 +601,8 @@ static int select_music_file(int menu_idx)
                 {
                     Paint_SelectImage(Image_Mono);
                     Paint_DrawRectangle(5, 58, 480, 799, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-                    x_or = reassignCoordinates_CH(240, " 正在重新读取文件目录... ", &Font24_UTF8);
-                    Paint_DrawString_CN(x_or, 410, " 正在重新读取文件目录... ", &Font24_UTF8, BLACK, WHITE);
+                    x_or = reassignCoordinates_CH(240, " Re-reading directory... ", &Font24_UTF8);
+                    Paint_DrawString_CN(x_or, 410, " Re-reading directory... ", &Font24_UTF8, BLACK, WHITE);
                     Refresh_page_audio(Image_Mono);
 
                     Paint_DrawRectangle(5, 58, 475, 799, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
@@ -1019,8 +1019,8 @@ void page_audio_record_control(void)
     xTaskCreate(page_audio_record_task, "audio_record", 8192, NULL, 5, NULL);
 
     Paint_DrawRectangle(5, 56, 480, 799, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    Paint_DrawString_CN(159, 336, " 正在录音 ", &Font24_UTF8, BLACK, WHITE);
-    Paint_DrawString_CN(184, 700, " 暂停 ", &Font24_UTF8, BLACK, WHITE);
+    Paint_DrawString_CN(159, 336, " Recording ", &Font24_UTF8, BLACK, WHITE);
+    Paint_DrawString_CN(184, 700, " Pause ", &Font24_UTF8, BLACK, WHITE);
 
     while (1)
     {
@@ -1032,8 +1032,8 @@ void page_audio_record_control(void)
                 audio_flag = false;
 
                 Paint_DrawRectangle(5, 56, 480, 799, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-                Paint_DrawString_CN(159, 336, " 录音暂停 ", &Font24_UTF8, BLACK, WHITE);
-                Paint_DrawString_CN(184, 700, " 继续 ", &Font24_UTF8, BLACK, WHITE);
+                Paint_DrawString_CN(159, 336, " Recording paused ", &Font24_UTF8, BLACK, WHITE);
+                Paint_DrawString_CN(184, 700, " Resume ", &Font24_UTF8, BLACK, WHITE);
                 duration_int = (int)duration;
                 duration_str[4] = (duration_int%60)%10 + '0';
                 duration_str[3] = (duration_int%60)/10 + '0';
@@ -1048,8 +1048,8 @@ void page_audio_record_control(void)
                 audio_flag = true;
 
                 Paint_DrawRectangle(5, 56, 480, 799, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-                Paint_DrawString_CN(159, 336, " 正在录音 ", &Font24_UTF8, BLACK, WHITE);
-                Paint_DrawString_CN(184, 700, " 暂停 ", &Font24_UTF8, BLACK, WHITE);
+                Paint_DrawString_CN(159, 336, " Recording ", &Font24_UTF8, BLACK, WHITE);
+                Paint_DrawString_CN(184, 700, " Pause ", &Font24_UTF8, BLACK, WHITE);
             }
         } else if(button == 8 || button == 22) {
             // Stop recording
@@ -1100,10 +1100,10 @@ int page_audio_file_management(const char* file_path_name)
     Paint_Clear(WHITE);
 
     const char* menu[] = {
-        "播放",
-        "文件信息",
-        "删除文件",
-        "返回"
+        "Play",
+        "File info",
+        "Delete file",
+        "Back"
     };
 
 
@@ -1184,7 +1184,7 @@ void delete_music_file(const char* file_path_name)
     struct stat file_stat;
     if (stat(file_path, &file_stat) != 0) {
         // ESP_LOGI(TAG, "Error: The file does not exist or is inaccessible\n");
-        Paint_DrawString_CN(10, 60, "错误: 文件不存在或无法访问", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 60, "Error: file missing or unreadable", &Font24_UTF8, WHITE, BLACK);
         vTaskDelay(pdMS_TO_TICKS(2000));
         return;
     }
@@ -1195,10 +1195,10 @@ void delete_music_file(const char* file_path_name)
     Paint_DrawString_CN(10, 210, "5 The deletion operation will be automatically performed in seconds", &Font24_UTF8, WHITE, BLACK);
     Refresh_page_audio(Image_Mono_audio);
     
-    // ESP_LOGI(TAG, "确认删除文件: %s ?\n", filename);
-    // ESP_LOGI(TAG, "完整路径: %s\n", file_path);
-    // ESP_LOGI(TAG, "Function键确认, Boot键取消\n");
-    // ESP_LOGI(TAG, "文件大小: %ld 字节\n", file_stat.st_size);
+    // ESP_LOGI(TAG, "Delete file: %s ?\n", filename);
+    // ESP_LOGI(TAG, "Full path: %s\n", file_path);
+    // ESP_LOGI(TAG, "Function = confirm, Boot = cancel\n");
+    // ESP_LOGI(TAG, "File size: %ld bytes\n", file_stat.st_size);
     
     int button;
     int time_count = 5;
@@ -1209,7 +1209,7 @@ void delete_music_file(const char* file_path_name)
         if(button == -1)  time_count--;
         if (button == 7 || time_count <= 0) {
             Paint_DrawRectangle(5, 58, 475, 799, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-            Paint_DrawString_CN(10, 60, "开始删除文件...", &Font24_UTF8, WHITE, BLACK);
+            Paint_DrawString_CN(10, 60, "Deleting file...", &Font24_UTF8, WHITE, BLACK);
             Refresh_page_audio(Image_Mono_audio);
             ESP_LOGI(TAG, "Start deleting files...\n");
             
@@ -1217,17 +1217,17 @@ void delete_music_file(const char* file_path_name)
             int result = unlink(file_path);
             if (result == 0) {
                 ESP_LOGI(TAG, "The file was deleted successfully.: %s\n", filename);
-                Paint_DrawString_CN(10, 110, "文件删除成功", &Font24_UTF8, WHITE, BLACK);
+                Paint_DrawString_CN(10, 110, "File deleted", &Font24_UTF8, WHITE, BLACK);
                 Refresh_page_audio(Image_Mono_audio);
                 // Verify that the file was indeed deleted
                 if (stat(file_path, &file_stat) != 0) {
                     ESP_LOGI(TAG, "Verification: The file has been successfully deleted\n");
-                    Paint_DrawString_CN(10, 160, "验证: 文件已成功删除", &Font24_UTF8, WHITE, BLACK);
+                    Paint_DrawString_CN(10, 160, "Verified: file deleted", &Font24_UTF8, WHITE, BLACK);
                     Refresh_page_audio(Image_Mono_audio);
                     break;
                 } else {
                     ESP_LOGI(TAG, "Warning: The file may not have been completely deleted\n");
-                    Paint_DrawString_CN(10, 160, "警告: 文件可能未完全删除", &Font24_UTF8, WHITE, BLACK);
+                    Paint_DrawString_CN(10, 160, "Warning: file may not be fully deleted", &Font24_UTF8, WHITE, BLACK);
                     Refresh_page_audio(Image_Mono_audio);
                     break;
                 }
@@ -1237,17 +1237,17 @@ void delete_music_file(const char* file_path_name)
                 ESP_LOGI(TAG, "errno: %d (%s)\n", errno, strerror(errno));
 
                 Paint_DrawRectangle(5, 58, 475, 799, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-                Paint_DrawString_CN(10, 60, "文件删除失败", &Font24_UTF8, WHITE, BLACK);
+                Paint_DrawString_CN(10, 60, "Delete failed", &Font24_UTF8, WHITE, BLACK);
                 
                 if (errno == EACCES) {
                     ESP_LOGI(TAG, "insufficient privileges\n");
-                    Paint_DrawString_CN(10, 110, "权限不足", &Font24_UTF8, WHITE, BLACK);
+                    Paint_DrawString_CN(10, 110, "Permission denied", &Font24_UTF8, WHITE, BLACK);
                 } else if (errno == ENOENT) {
                     ESP_LOGI(TAG, "file does not exist\n");
-                    Paint_DrawString_CN(10, 110, "文件不存在", &Font24_UTF8, WHITE, BLACK);
+                    Paint_DrawString_CN(10, 110, "File not found", &Font24_UTF8, WHITE, BLACK);
                 } else if (errno == EBUSY) {
                     ESP_LOGI(TAG, "The file is in use\n");
-                    Paint_DrawString_CN(10, 110, "文件正在使用中", &Font24_UTF8, WHITE, BLACK);
+                    Paint_DrawString_CN(10, 110, "File is in use", &Font24_UTF8, WHITE, BLACK);
                 }
                 Refresh_page_audio(Image_Mono_audio);
                 break;
@@ -1288,16 +1288,16 @@ void show_file_info(const char* file_path_name)
         ESP_LOGI(TAG, "modification time: %s\n", time_str);
         
 
-        uint16_t x_or = reassignCoordinates_CH(240, " === 文件信息 === ", &Font24_UTF8);
-        Paint_DrawString_CN(x_or, 60, " === 文件信息 === ", &Font24_UTF8, BLACK, WHITE);
+        uint16_t x_or = reassignCoordinates_CH(240, " === File info === ", &Font24_UTF8);
+        Paint_DrawString_CN(x_or, 60, " === File info === ", &Font24_UTF8, BLACK, WHITE);
         char display_name[100];
         truncate_string_by_width(file_path_name, display_name, sizeof(display_name), 380, &Font18_UTF8);
         char file_str[120];
-        snprintf(file_str, sizeof(file_str), "文件名:%s", display_name);
+        snprintf(file_str, sizeof(file_str), "Name: %s", display_name);
         Paint_DrawString_CN(10, 110, file_str, &Font18_UTF8, WHITE, BLACK);
-        snprintf(file_str, sizeof(file_str), "大小:%.2f KB (%.2f MB)", (float)file_stat.st_size / 1024.0, (float)file_stat.st_size / (1024.0 * 1024.0));
+        snprintf(file_str, sizeof(file_str), "Size: %.2f KB (%.2f MB)", (float)file_stat.st_size / 1024.0, (float)file_stat.st_size / (1024.0 * 1024.0));
         Paint_DrawString_CN(10, 145, file_str, &Font18_UTF8, WHITE, BLACK);
-        snprintf(file_str, sizeof(file_str), "修改时间:%s", time_str);
+        snprintf(file_str, sizeof(file_str), "Modified: %s", time_str);
         Paint_DrawString_CN(10, 180, file_str, &Font18_UTF8, WHITE, BLACK);
         
         if (strstr(filename, ".wav") || strstr(filename, ".WAV")) {
@@ -1307,14 +1307,14 @@ void show_file_info(const char* file_path_name)
         }
 
         Paint_DrawLine(2, EPD_WIDTH - (Font12_UTF8.Height + 10), EPD_HEIGHT-2, EPD_WIDTH - (Font12_UTF8.Height + 10), BLACK, DOT_PIXEL_2X2, LINE_STYLE_SOLID);
-        Paint_DrawString_CN(5, EPD_WIDTH - (Font12_UTF8.Height + 5), "双击确认/Boot:返回上级", &Font12_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(5, EPD_WIDTH - (Font12_UTF8.Height + 5), "Double-click Function/Boot: back", &Font12_UTF8, WHITE, BLACK);
 
         Refresh_page_audio(Image_Mono_audio);
         
         ESP_LOGI(TAG, "================\n");
     } else {
         ESP_LOGI(TAG, "The file information cannot be obtained\n");
-        Paint_DrawString_CN(10, 60, " 无法获取文件信息 ", &Font24_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(10, 60, " Could not read file info ", &Font24_UTF8, BLACK, WHITE);
     }
 
     int button;
@@ -1373,22 +1373,22 @@ void show_wav_file_info(const char *file_path)
             }
 
             if(header.audio_format == 1)
-                Paint_DrawString_CN(10, 215, "音频格式:PCM", &Font18_UTF8, WHITE, BLACK);
+                Paint_DrawString_CN(10, 215, "Format: PCM", &Font18_UTF8, WHITE, BLACK);
             else
-                Paint_DrawString_CN(10, 215, "音频格式:其他", &Font18_UTF8, WHITE, BLACK);
+                Paint_DrawString_CN(10, 215, "Format: other", &Font18_UTF8, WHITE, BLACK);
 
             char file_str[100];
-            snprintf(file_str, sizeof(file_str), "声道数:%d", header.channels);
+            snprintf(file_str, sizeof(file_str), "Channels: %d", header.channels);
             Paint_DrawString_CN(10, 250, file_str, &Font18_UTF8, WHITE, BLACK);
-            snprintf(file_str, sizeof(file_str), "采样率:%ld", (unsigned long)header.sample_rate);
+            snprintf(file_str, sizeof(file_str), "Sample rate: %ld", (unsigned long)header.sample_rate);
             Paint_DrawString_CN(10, 285, file_str, &Font18_UTF8, WHITE, BLACK);
-            snprintf(file_str, sizeof(file_str), "位深度:%d", header.bits_per_sample);
+            snprintf(file_str, sizeof(file_str), "Bit depth: %d", header.bits_per_sample);
             Paint_DrawString_CN(10, 320, file_str, &Font18_UTF8, WHITE, BLACK);
-            snprintf(file_str, sizeof(file_str), "时长:%.1fs", wav_duration);
+            snprintf(file_str, sizeof(file_str), "Length: %.1fs", wav_duration);
             Paint_DrawString_CN(10, 355, file_str, &Font18_UTF8, WHITE, BLACK);
         } else {
             ESP_LOGI(TAG, "File format: Non-standard WAV format\n");
-            Paint_DrawString_CN(10, 215, " 文件格式: 非标准WAV格式 ", &Font18_UTF8, BLACK, WHITE);
+            Paint_DrawString_CN(10, 215, " Format: non-standard WAV ", &Font18_UTF8, BLACK, WHITE);
         }
     }
     fclose(fp);
@@ -1549,7 +1549,7 @@ void show_mp3_file_info(const char *file_path)
             id3v2_size = parse_synchsafe_int(id3v2.size) + 10; 
             ESP_LOGI(TAG, "Check the ID3v2 tag for the ID3v2 version: 2.%d.%d\n", id3v2.version[0], id3v2.version[1]);
             char file_str[100];
-            snprintf(file_str, sizeof(file_str), "ID3v2版本:2.%d.%d", id3v2.version[0], id3v2.version[1]);
+            snprintf(file_str, sizeof(file_str), "ID3v2 version: 2.%d.%d", id3v2.version[0], id3v2.version[1]);
             Paint_DrawString_CN(10, 390, file_str, &Font18_UTF8, WHITE, BLACK);
         }
     }
@@ -1589,25 +1589,25 @@ void show_mp3_file_info(const char *file_path)
                     }
                 }
 
-                Paint_DrawString_CN(10, 215, "音频格式:MP3", &Font18_UTF8, WHITE, BLACK);
+                Paint_DrawString_CN(10, 215, "Format: MP3", &Font18_UTF8, WHITE, BLACK);
                 char file_str[100];
-                snprintf(file_str, sizeof(file_str), "声道数:%d", channels);
+                snprintf(file_str, sizeof(file_str), "Channels: %d", channels);
                 Paint_DrawString_CN(10, 250, file_str, &Font18_UTF8, WHITE, BLACK);
-                snprintf(file_str, sizeof(file_str), "采样率:%d", samplerate);
+                snprintf(file_str, sizeof(file_str), "Sample rate: %d", samplerate);
                 Paint_DrawString_CN(10, 285, file_str, &Font18_UTF8, WHITE, BLACK);
-                snprintf(file_str, sizeof(file_str), "比特率:%d", bitrate);
+                snprintf(file_str, sizeof(file_str), "Bit rate: %d", bitrate);
                 Paint_DrawString_CN(10, 320, file_str, &Font18_UTF8, WHITE, BLACK);
-                snprintf(file_str, sizeof(file_str), "时长:%.1fs", duration);
+                snprintf(file_str, sizeof(file_str), "Length: %.1fs", duration);
                 Paint_DrawString_CN(10, 355, file_str, &Font18_UTF8, WHITE, BLACK);
 
             } else {
                 ESP_LOGI(TAG, "The MP3 format parsing failed\n");
-                Paint_DrawString_CN(10, 215, " MP3格式解析失败 ", &Font18_UTF8, BLACK, WHITE);
+                Paint_DrawString_CN(10, 215, " MP3 parse failed ", &Font18_UTF8, BLACK, WHITE);
             }
         }
     } else {
         ESP_LOGI(TAG, "No valid MP3 frame header was found\n");
-        Paint_DrawString_CN(10, 215, " 未找到有效的MP3帧头 ", &Font18_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(10, 215, " No valid MP3 frame header ", &Font18_UTF8, BLACK, WHITE);
     }
     
     char title[64] = {0};
@@ -1616,13 +1616,13 @@ void show_mp3_file_info(const char *file_path)
         if (strlen(title) > 0) {
             ESP_LOGI(TAG, "headline: %s\n", title);
             char file_str[100];
-            snprintf(file_str, sizeof(file_str), "标题: %s", title);
+            snprintf(file_str, sizeof(file_str), "Title: %s", title);
             Paint_DrawString_CN(10, 425, file_str, &Font18_UTF8, WHITE, BLACK);
         }
         if (strlen(artist) > 0) {
             ESP_LOGI(TAG, "artist: %s\n", artist);
             char file_str[100];
-            snprintf(file_str, sizeof(file_str), "艺术家: %s", artist);
+            snprintf(file_str, sizeof(file_str), "Artist: %s", artist);
             Paint_DrawString_CN(10, 460, file_str, &Font18_UTF8, WHITE, BLACK);
         }
     }
@@ -1662,14 +1662,14 @@ static void display_audio_init(Time_data rtc_time)
     Paint_DrawLine(2, 54, EPD_HEIGHT-2, 54, BLACK, DOT_PIXEL_2X2, LINE_STYLE_SOLID);
 
     // Paint_DrawRectangle(5, 58, 475, 103, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    Paint_DrawString_CN(10, 60, "播放内置音频", &Font24_UTF8, WHITE, BLACK);
-    Paint_DrawString_CN(10, 110, "播放TF卡音频", &Font24_UTF8, WHITE, BLACK);
-    Paint_DrawString_CN(10, 160, "录制音频", &Font24_UTF8, WHITE, BLACK);
-    Paint_DrawString_CN(10, 210, "文件管理", &Font24_UTF8, WHITE, BLACK);
-    Paint_DrawString_CN(10, 260, "返回主菜单", &Font24_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, 60, "Play built-in audio", &Font24_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, 110, "Play from SD card", &Font24_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, 160, "Record audio", &Font24_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, 210, "File Manager", &Font24_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, 260, "Back to menu", &Font24_UTF8, WHITE, BLACK);
 
     Paint_DrawLine(5, EPD_WIDTH - (Font12_UTF8.Height + 10), EPD_HEIGHT-5, EPD_WIDTH - (Font12_UTF8.Height + 10), BLACK, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
-    Paint_DrawString_CN(5, EPD_WIDTH - (Font12_UTF8.Height + 5), "↑↓:选择,单击确认:打开,双击确认:返回上级", &Font12_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(5, EPD_WIDTH - (Font12_UTF8.Height + 5), "Up/Down: pick, Function: open, double-click: back", &Font12_UTF8, WHITE, BLACK);
 }
 
 static void display_audio_time_last(Time_data rtc_time)
@@ -1723,43 +1723,43 @@ static void display_audio_option(int count)
 {
     if(count == 0){
         Paint_DrawRectangle(5, 108, 475, 153, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 110, "播放TF卡音频", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 110, "Play from SD card", &Font24_UTF8, WHITE, BLACK);
         Paint_DrawRectangle(5, 258, 475, 303, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 260, "返回主菜单", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 260, "Back to menu", &Font24_UTF8, WHITE, BLACK);
         Paint_DrawRectangle(5, 58, 475, 103, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 60, "播放内置音频", &Font24_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(10, 60, "Play built-in audio", &Font24_UTF8, BLACK, WHITE);
     } else if(count == 1) {
         Paint_DrawRectangle(5, 58, 475, 103, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 60, "播放内置音频", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 60, "Play built-in audio", &Font24_UTF8, WHITE, BLACK);
         Paint_DrawRectangle(5, 108, 475, 153, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 110, "播放TF卡音频", &Font24_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(10, 110, "Play from SD card", &Font24_UTF8, BLACK, WHITE);
         Paint_DrawRectangle(5, 158, 475, 203, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 160, "录制音频", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 160, "Record audio", &Font24_UTF8, WHITE, BLACK);
     } else if(count == 2) {
         Paint_DrawRectangle(5, 108, 475, 153, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 110, "播放TF卡音频", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 110, "Play from SD card", &Font24_UTF8, WHITE, BLACK);
         Paint_DrawRectangle(5, 158, 475, 203, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 160, "录制音频", &Font24_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(10, 160, "Record audio", &Font24_UTF8, BLACK, WHITE);
         Paint_DrawRectangle(5, 208, 475, 253, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 210, "文件管理", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 210, "File Manager", &Font24_UTF8, WHITE, BLACK);
     } else if(count == 3) {
         Paint_DrawRectangle(5, 158, 475, 203, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 160, "录制音频", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 160, "Record audio", &Font24_UTF8, WHITE, BLACK);
         Paint_DrawRectangle(5, 208, 475, 253, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 210, "文件管理", &Font24_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(10, 210, "File Manager", &Font24_UTF8, BLACK, WHITE);
         Paint_DrawRectangle(5, 258, 475, 303, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 260, "返回主菜单", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 260, "Back to menu", &Font24_UTF8, WHITE, BLACK);
     } else if(count == 4) {
         Paint_DrawRectangle(5, 58, 475, 103, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 60, "播放内置音频", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 60, "Play built-in audio", &Font24_UTF8, WHITE, BLACK);
         Paint_DrawRectangle(5, 208, 475, 253, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 210, "文件管理", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 210, "File Manager", &Font24_UTF8, WHITE, BLACK);
         Paint_DrawRectangle(5, 258, 475, 303, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 260, "返回主菜单", &Font24_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(10, 260, "Back to menu", &Font24_UTF8, BLACK, WHITE);
     }
 
     Paint_DrawLine(5, EPD_WIDTH - (Font12_UTF8.Height + 10), EPD_HEIGHT-5, EPD_WIDTH - (Font12_UTF8.Height + 10), BLACK, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
-    Paint_DrawString_CN(5, EPD_WIDTH - (Font12_UTF8.Height + 5), "↑↓:选择,单击确认:打开,双击确认:返回上级", &Font12_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(5, EPD_WIDTH - (Font12_UTF8.Height + 5), "Up/Down: pick, Function: open, double-click: back", &Font12_UTF8, WHITE, BLACK);
 }
 
 static void display_audio_option_file_management(int count)
@@ -1767,32 +1767,32 @@ static void display_audio_option_file_management(int count)
     Paint_DrawRectangle(5, 58, 475, 799, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
     if(count == 0){
         Paint_DrawRectangle(5, 58, 475, 103, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 60, "播放", &Font24_UTF8, BLACK, WHITE);
-        Paint_DrawString_CN(10, 110, "文件信息", &Font24_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(10, 160, "删除文件", &Font24_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(10, 210, "返回", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 60, "Play", &Font24_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(10, 110, "File info", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 160, "Delete file", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 210, "Back", &Font24_UTF8, WHITE, BLACK);
     } else if(count == 1) {
         Paint_DrawRectangle(5, 108, 475, 153, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 60, "播放", &Font24_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(10, 110, "文件信息", &Font24_UTF8, BLACK, WHITE);
-        Paint_DrawString_CN(10, 160, "删除文件", &Font24_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(10, 210, "返回", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 60, "Play", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 110, "File info", &Font24_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(10, 160, "Delete file", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 210, "Back", &Font24_UTF8, WHITE, BLACK);
     } else if(count == 2) {
         Paint_DrawRectangle(5, 158, 475, 203, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 60, "播放", &Font24_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(10, 110, "文件信息", &Font24_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(10, 160, "删除文件", &Font24_UTF8, BLACK, WHITE);
-        Paint_DrawString_CN(10, 210, "返回", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 60, "Play", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 110, "File info", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 160, "Delete file", &Font24_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(10, 210, "Back", &Font24_UTF8, WHITE, BLACK);
     } else if(count == 3) {
         Paint_DrawRectangle(5, 208, 475, 253, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-        Paint_DrawString_CN(10, 60, "播放", &Font24_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(10, 110, "文件信息", &Font24_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(10, 160, "删除文件", &Font24_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(10, 210, "返回", &Font24_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(10, 60, "Play", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 110, "File info", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 160, "Delete file", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 210, "Back", &Font24_UTF8, BLACK, WHITE);
     }
 
     Paint_DrawLine(5, EPD_WIDTH - (Font12_UTF8.Height + 10), EPD_HEIGHT-5, EPD_WIDTH - (Font12_UTF8.Height + 10), BLACK, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
-    Paint_DrawString_CN(5, EPD_WIDTH - (Font12_UTF8.Height + 5), "↑↓:选择,单击确认:打开,双击确认:返回上级", &Font12_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(5, EPD_WIDTH - (Font12_UTF8.Height + 5), "Up/Down: pick, Function: open, double-click: back", &Font12_UTF8, WHITE, BLACK);
 }
 
 static void Forced_refresh_audio(uint8_t *EDP_buffer)
@@ -1985,10 +1985,10 @@ static void display_music_file_list(file_entry_t* entries, int num_entries, int 
     Paint_DrawLine(10, status_y - 5, EPD_HEIGHT - 10, status_y - 5, BLACK, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
     
     char page_info[50];
-    snprintf(page_info, sizeof(page_info), "第%d/%d页 共%d个文件", page_index + 1, total_pages, num_entries);
+    snprintf(page_info, sizeof(page_info), "Page %d/%d, %d files", page_index + 1, total_pages, num_entries);
     Paint_DrawString_CN(10, EPD_WIDTH-(Font12_UTF8.Height*2 + 10), page_info, &Font12_UTF8, WHITE, BLACK);
     
-    Paint_DrawString_CN(10, EPD_WIDTH - (Font12_UTF8.Height + 5), "↑↓:选择,单击确认:播放,双击确认:返回上级", &Font12_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, EPD_WIDTH - (Font12_UTF8.Height + 5), "Up/Down: pick, Function: play, double-click: back", &Font12_UTF8, WHITE, BLACK);
 
     EPD_Display_Partial(Image_Mono, 0, 0, EPD_WIDTH, EPD_HEIGHT);
 }
@@ -2047,7 +2047,7 @@ static void display_message(const char* message)
     int msg_y = EPD_HEIGHT/2 - Font24_UTF8.Height;
     
     Paint_DrawString_CN(msg_x, msg_y, message, &Font24_UTF8, WHITE, BLACK);
-    Paint_DrawString_CN(msg_x, msg_y + Font24_UTF8.Height + 10, "按任意键继续...", &Font16_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(msg_x, msg_y + Font24_UTF8.Height + 10, "Press any key to continue...", &Font16_UTF8, WHITE, BLACK);
     
     EPD_Display_Partial(Image_Mono, 0, 0, EPD_WIDTH, EPD_HEIGHT);
     

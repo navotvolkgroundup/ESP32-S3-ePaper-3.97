@@ -41,41 +41,52 @@ typedef struct {
 
 // 25 time zone configurations (UTC-12 to UTC+12)
 static const timezone_config_t timezone_list[] = {
-    {"UTC-12", "UTC+12", -12, "西十二区"},
-    {"UTC-11", "UTC+11", -11, "西十一区"},
-    {"UTC-10", "UTC+10", -10, "西十区"},
-    {"UTC-9",  "UTC+9",  -9,  "西九区"},
-    {"UTC-8",  "UTC+8",  -8,  "西八区"},
-    {"UTC-7",  "UTC+7",  -7,  "西七区"},
-    {"UTC-6",  "UTC+6",  -6,  "西六区"},
-    {"UTC-5",  "UTC+5",  -5,  "西五区"},
-    {"UTC-4",  "UTC+4",  -4,  "西四区"},
-    {"UTC-3",  "UTC+3",  -3,  "西三区"},
-    {"UTC-2",  "UTC+2",  -2,  "西二区"},
-    {"UTC-1",  "UTC+1",  -1,  "西一区"},
-    {"UTC+0",  "UTC0",    0,  "零时区"},
-    {"UTC+1",  "UTC-1",   1,  "东一区"},
-    {"UTC+2",  "UTC-2",   2,  "东二区"},
-    {"UTC+3",  "UTC-3",   3,  "东三区"},
-    {"UTC+4",  "UTC-4",   4,  "东四区"},
-    {"UTC+5",  "UTC-5",   5,  "东五区"},
-    {"UTC+6",  "UTC-6",   6,  "东六区"},
-    {"UTC+7",  "UTC-7",   7,  "东七区"},
-    {"UTC+8",  "CST-8",   8,  "东八区"},  // Beijing Time (default)
-    {"UTC+9",  "JST-9",   9,  "东九区"},
-    {"UTC+10", "UTC-10", 10,  "东十区"},
-    {"UTC+11", "UTC-11", 11,  "东十一区"},
-    {"UTC+12", "UTC-12", 12,  "东十二区"},
+    {"UTC-12", "UTC+12", -12, "UTC-12"},
+    {"UTC-11", "UTC+11", -11, "UTC-11"},
+    {"UTC-10", "UTC+10", -10, "UTC-10"},
+    {"UTC-9",  "UTC+9",  -9,  "UTC-9"},
+    {"UTC-8",  "UTC+8",  -8,  "UTC-8"},
+    {"UTC-7",  "UTC+7",  -7,  "UTC-7"},
+    {"UTC-6",  "UTC+6",  -6,  "UTC-6"},
+    {"UTC-5",  "UTC+5",  -5,  "UTC-5"},
+    {"UTC-4",  "UTC+4",  -4,  "UTC-4"},
+    {"UTC-3",  "UTC+3",  -3,  "UTC-3"},
+    {"UTC-2",  "UTC+2",  -2,  "UTC-2"},
+    {"UTC-1",  "UTC+1",  -1,  "UTC-1"},
+    {"UTC+0",  "UTC0",    0,  "UTC+0"},
+    {"UTC+1",  "UTC-1",   1,  "UTC+1"},
+    {"UTC+2",  "UTC-2",   2,  "UTC+2"},
+    {"UTC+3",  "UTC-3",   3,  "UTC+3"},
+    {"UTC+4",  "UTC-4",   4,  "UTC+4"},
+    {"UTC+5",  "UTC-5",   5,  "UTC+5"},
+    {"UTC+6",  "UTC-6",   6,  "UTC+6"},
+    {"UTC+7",  "UTC-7",   7,  "UTC+7"},
+    {"UTC+8",  "CST-8",   8,  "UTC+8"},  // Beijing Time (default)
+    {"UTC+9",  "JST-9",   9,  "UTC+9"},
+    {"UTC+10", "UTC-10", 10,  "UTC+10"},
+    {"UTC+11", "UTC-11", 11,  "UTC+11"},
+    {"UTC+12", "UTC-12", 12,  "UTC+12"},
 };
 
 #define TIMEZONE_COUNT (sizeof(timezone_list) / sizeof(timezone_config_t))
 #define DEFAULT_TIMEZONE_INDEX 20  // Default Eastern 8th Time Zone (UTC+8)
 
-// NVS key name
-#define NVS_NAMESPACE "clock_config"
+// NVS storage for this page.
+//
+// This used to define NVS_NAMESPACE twice -- "clock_config" and then
+// "clock_th" -- which the compiler flagged ("NVS_NAMESPACE redefined") and
+// which meant the timezone silently landed in the SECOND one, because the
+// only two uses come after both defines. NVS_KEY was dead as well: the
+// temperature/humidity blob is opened with string literals, not the macro.
+//
+// DO NOT "fix" this by pointing the timezone at "clock_config". That reads
+// like the intended name, but every device in the field has its timezone
+// stored under "clock_th" -- changing the namespace orphans that value and
+// silently reverts the clock to the factory default of index 20, UTC+8
+// Beijing. One namespace, two keys, is the behaviour that already exists.
+#define CLOCK_NVS_NS     "clock_th"
 #define NVS_KEY_TIMEZONE "timezone_idx"
-#define NVS_NAMESPACE "clock_th"
-#define NVS_KEY "th_data" 
+#define NVS_KEY_TH       "th_data"
 
 // E-ink screen sleep time (S)
 #define EPD_Sleep_Time   60
@@ -162,7 +173,7 @@ static void show_time(const Time_data *t)
 {
     struct tm tm_val = {0};
     timedata_to_tm(t, &tm_val);
-    const char* week_str[] = {"日", "一", "二", "三", "四", "五", "六"};
+    const char* week_str[] = {"Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"};
     ESP_LOGI("clock", "current time: %04d-%02d-%02d %02d:%02d:%02d week %s",
         t->years + 2000, t->months, t->days, t->hours, t->minutes, t->seconds,
         week_str[tm_val.tm_wday]);
@@ -174,7 +185,7 @@ static int load_timezone_index_from_nvs(void)
     nvs_handle_t nvs_handle;
     int32_t timezone_idx = DEFAULT_TIMEZONE_INDEX;
     
-    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READONLY, &nvs_handle);
+    esp_err_t err = nvs_open(CLOCK_NVS_NS, NVS_READONLY, &nvs_handle);
     if (err == ESP_OK) {
         nvs_get_i32(nvs_handle, NVS_KEY_TIMEZONE, &timezone_idx);
         nvs_close(nvs_handle);
@@ -198,7 +209,7 @@ static esp_err_t save_timezone_index_to_nvs(int timezone_idx)
         return ESP_ERR_INVALID_ARG;
     }
     
-    err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs_handle);
+    err = nvs_open(CLOCK_NVS_NS, NVS_READWRITE, &nvs_handle);
     if (err != ESP_OK) {
         ESP_LOGE("timezone", "Failed to open NVS: %s", esp_err_to_name(err));
         return err;
@@ -218,15 +229,15 @@ static esp_err_t save_timezone_index_to_nvs(int timezone_idx)
 void load_clock_from_nvs(void) {
     nvs_handle_t handle;
     size_t required_size = sizeof(Clock_TH_Old);
-    if (nvs_open("clock_th", NVS_READONLY, &handle) == ESP_OK) {
-        nvs_get_blob(handle, "th_data", &Clock_TH_Old, &required_size);
+    if (nvs_open(CLOCK_NVS_NS, NVS_READONLY, &handle) == ESP_OK) {
+        nvs_get_blob(handle, NVS_KEY_TH, &Clock_TH_Old, &required_size);
         nvs_close(handle);
     }
 }
 void save_clock_to_nvs_if_changed(void) {
     nvs_handle_t handle;
-    if (nvs_open("clock_th", NVS_READWRITE, &handle) == ESP_OK) {
-        nvs_set_blob(handle, "th_data", &Clock_TH_Old, sizeof(Clock_TH_Old));
+    if (nvs_open(CLOCK_NVS_NS, NVS_READWRITE, &handle) == ESP_OK) {
+        nvs_set_blob(handle, NVS_KEY_TH, &Clock_TH_Old, sizeof(Clock_TH_Old));
         nvs_commit(handle);
         nvs_close(handle);
     }
@@ -265,14 +276,14 @@ void page_timezone_select(void)
     // Display the list of time zones
     Paint_Clear(WHITE);
     char title[64];
-    snprintf(title, sizeof(title), "时区设置,当前时区: %s", timezone_list[current_idx].CH_name);
+    snprintf(title, sizeof(title), "Time zone, current: %s", timezone_list[current_idx].CH_name);
     Paint_DrawString_CN(10, 10, title, &Font24_UTF8, WHITE, BLACK);
-    snprintf(title, sizeof(title), "时区选择: %s", timezone_list[current_idx].CH_name);
+    snprintf(title, sizeof(title), "Time zone: %s", timezone_list[current_idx].CH_name);
     Paint_DrawString_CN(10, Font24_UTF8.Height+20, title, &Font24_UTF8, WHITE, BLACK);
-    Paint_DrawString_CN(10, Font24_UTF8.Height*2+30, "↑↓: 选择时区", &Font18_UTF8, WHITE, BLACK);
-    Paint_DrawString_CN(10, Font24_UTF8.Height*3+30, "单击确认: 确认选择时区", &Font18_UTF8, WHITE, BLACK);
-    Paint_DrawString_CN(10, Font24_UTF8.Height*4+30, "双击确认/Boot: 退出", &Font18_UTF8, WHITE, BLACK);
-    Paint_DrawString_CN(10, Font24_UTF8.Height*5+30, "60s 无操作退出", &Font18_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, Font24_UTF8.Height*2+30, "Up/Down: pick time zone", &Font18_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, Font24_UTF8.Height*3+30, "Press Function: confirm time zone", &Font18_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, Font24_UTF8.Height*4+30, "Double-click Function/Boot: exit", &Font18_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, Font24_UTF8.Height*5+30, "Exits after 60s idle", &Font18_UTF8, WHITE, BLACK);
     Refresh_page_clock();
     
     while (1) {
@@ -284,7 +295,7 @@ void page_timezone_select(void)
             if (selected_idx < 0) selected_idx = TIMEZONE_COUNT - 1;
             Paint_DrawRectangle(5,Font24_UTF8.Height+15, Font24_UTF8.Width_CH * 10+ 10, Font24_UTF8.Height*2+20,WHITE,DOT_PIXEL_1X1,DRAW_FILL_FULL);
             ESP_LOGI("timezone", "time zone > %s",timezone_list[selected_idx].name);
-            snprintf(title, sizeof(title), "时区选择: %s", timezone_list[selected_idx].CH_name);
+            snprintf(title, sizeof(title), "Time zone: %s", timezone_list[selected_idx].CH_name);
             Paint_DrawString_CN(10, Font24_UTF8.Height+20, title, &Font24_UTF8, WHITE, BLACK);
             Refresh_page_clock();
         } else if (button == 14) {
@@ -293,13 +304,13 @@ void page_timezone_select(void)
             if (selected_idx > TIMEZONE_COUNT - 1) selected_idx = 0;
             Paint_DrawRectangle(5,Font24_UTF8.Height+15, Font24_UTF8.Width_CH * 10+ 10, Font24_UTF8.Height*2+20,WHITE,DOT_PIXEL_1X1,DRAW_FILL_FULL);
             ESP_LOGI("timezone", "time zone > %s",timezone_list[selected_idx].name);
-            snprintf(title, sizeof(title), "时区选择: %s", timezone_list[selected_idx].CH_name);
+            snprintf(title, sizeof(title), "Time zone: %s", timezone_list[selected_idx].CH_name);
             Paint_DrawString_CN(10, Font24_UTF8.Height+20, title, &Font24_UTF8, WHITE, BLACK);
             Refresh_page_clock();
         } else if (button == 7) {
             time_count = 0;
             Paint_DrawRectangle(5,5, Font24_UTF8.Width_CH * 15+ 10, Font24_UTF8.Height+15,WHITE,DOT_PIXEL_1X1,DRAW_FILL_FULL);
-            snprintf(title, sizeof(title), "时区设置,当前时区: %s", timezone_list[selected_idx].CH_name);
+            snprintf(title, sizeof(title), "Time zone, current: %s", timezone_list[selected_idx].CH_name);
             Paint_DrawString_CN(10, 10, title, &Font24_UTF8, WHITE, BLACK);
             Refresh_page_clock();
         } else if (button == 12) { 
@@ -609,8 +620,8 @@ void page_calendar_show(void)
                 esp_err_t ip_ret = esp_netif_get_ip_info(netif, &ip_info);
                 if (ip_ret != ESP_OK || ip_info.ip.addr == 0) {
                     ESP_LOGI("lunar1", "The IP address for WiFi was not obtained. Please check your network!");
-                    Paint_DrawString_CN(10, 110, "WiFi未获取到IP地址，请检查网络！", &Font24_UTF8, WHITE, BLACK);
-                    Paint_DrawString_CN(10, 165, "三秒后显示原内容", &Font24_UTF8, WHITE, BLACK);
+                    Paint_DrawString_CN(10, 110, "No IP address. Check the network.", &Font24_UTF8, WHITE, BLACK);
+                    Paint_DrawString_CN(10, 165, "Restoring in 3 seconds", &Font24_UTF8, WHITE, BLACK);
                     Refresh_page_clock();
                     vTaskDelay(pdMS_TO_TICKS(3000));
                 } else {
@@ -619,7 +630,7 @@ void page_calendar_show(void)
                     EPD_Init();
                     EPD_Display_Partial(Image_Mono,0,0,EPD_WIDTH,EPD_HEIGHT);
                     Paint_Clear(WHITE);
-                    Paint_DrawString_CN(10, 110, "正在联网获取并保存农历数据...", &Font24_UTF8, WHITE, BLACK);
+                    Paint_DrawString_CN(10, 110, "Downloading lunar data...", &Font24_UTF8, WHITE, BLACK);
                     EPD_Display_Partial(Image_Mono,0,0,EPD_WIDTH,EPD_HEIGHT);
                     ESP_LOGI("clock", "EPD_Sleep");
                     EPD_Sleep();
@@ -632,8 +643,8 @@ void page_calendar_show(void)
                 }
             } else {
                 ESP_LOGI("lunar", "No network connection");
-                Paint_DrawString_CN(10, 110, "WiFi未获取到IP地址，请检查网络！", &Font24_UTF8, WHITE, BLACK);
-                Paint_DrawString_CN(10, 165, "三秒后显示原内容", &Font24_UTF8, WHITE, BLACK);
+                Paint_DrawString_CN(10, 110, "No IP address. Check the network.", &Font24_UTF8, WHITE, BLACK);
+                Paint_DrawString_CN(10, 165, "Restoring in 3 seconds", &Font24_UTF8, WHITE, BLACK);
                 Refresh_page_clock();
                 vTaskDelay(pdMS_TO_TICKS(3000));
             }
@@ -1045,7 +1056,7 @@ static void display_clock_nvs_img()
     char Time_str[50]={0};
     char hours[10] = {0};
     char minutes[10] = {0};
-    const char* week_str[] = {"星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"};
+    const char* week_str[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
     ESP_LOGI("clock", "current time: %04d-%02d-%02d %02d:%02d week:%s", Clock_TH_Old.years + 2000, Clock_TH_Old.months, Clock_TH_Old.days, Clock_TH_Old.hours, Clock_TH_Old.minutes, week_str[Clock_TH_Old.week]);
 
@@ -1148,7 +1159,7 @@ static void display_clock_img(Time_data rtc_time, int Refresh_mode)
     char Time_str[50]={0};
     char hours[10] = {0};
     char minutes[10] = {0};
-    const char* week_str[] = {"星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"};
+    const char* week_str[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
     ESP_LOGI("clock", "current time: %04d-%02d-%02d %02d:%02d:%02d week:%s", rtc_time.years + 2000, rtc_time.months, rtc_time.days, rtc_time.hours, rtc_time.minutes, rtc_time.seconds, week_str[rtc_time.week]);
 
@@ -1244,19 +1255,19 @@ static void display_calendar_img(Time_data rtc_time, LunarInfo* month_info)
     Paint_DrawString_CN(734, 25, BAT_str, &Font12_UTF8, WHITE, BLACK);
 
     Paint_DrawRectangle(3, 70, 113, 106, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    Paint_DrawString_CN(46, 74, "一", &Font16_UTF8, BLACK, WHITE);
+    Paint_DrawString_CN(46, 74, "Mo", &Font16_UTF8, BLACK, WHITE);
     Paint_DrawRectangle(117, 70, 227, 106, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    Paint_DrawString_CN(161, 74, "二", &Font16_UTF8, BLACK, WHITE);
+    Paint_DrawString_CN(161, 74, "Tu", &Font16_UTF8, BLACK, WHITE);
     Paint_DrawRectangle(231, 70, 341, 106, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    Paint_DrawString_CN(274, 74, "三", &Font16_UTF8, BLACK, WHITE);
+    Paint_DrawString_CN(274, 74, "We", &Font16_UTF8, BLACK, WHITE);
     Paint_DrawRectangle(345, 70, 455, 106, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    Paint_DrawString_CN(388, 74, "四", &Font16_UTF8, BLACK, WHITE);
+    Paint_DrawString_CN(388, 74, "Th", &Font16_UTF8, BLACK, WHITE);
     Paint_DrawRectangle(459, 70, 569, 106, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    Paint_DrawString_CN(502, 74, "五", &Font16_UTF8, BLACK, WHITE);
+    Paint_DrawString_CN(502, 74, "Fr", &Font16_UTF8, BLACK, WHITE);
     Paint_DrawRectangle(573, 70, 683, 106, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    Paint_DrawString_CN(616, 74, "六", &Font16_UTF8, BLACK, WHITE);
+    Paint_DrawString_CN(616, 74, "Sa", &Font16_UTF8, BLACK, WHITE);
     Paint_DrawRectangle(687, 70, 797, 106, BLACK, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    Paint_DrawString_CN(730, 74, "日", &Font16_UTF8, BLACK, WHITE);
+    Paint_DrawString_CN(730, 74, "Su", &Font16_UTF8, BLACK, WHITE);
 
 
     char Time_str[50]={0};
@@ -1296,10 +1307,10 @@ static void display_calendar_img(Time_data rtc_time, LunarInfo* month_info)
             esp_err_t ip_ret = esp_netif_get_ip_info(netif, &ip_info);
             if (ip_ret != ESP_OK || ip_info.ip.addr == 0) {
                 ESP_LOGI("lunar", "The IP address for WiFi was not obtained. Please check your network!");
-                Paint_DrawString_CN(10, 110, "WiFi未获取到IP地址，请检查网络！", &Font24_UTF8, WHITE, BLACK);
+                Paint_DrawString_CN(10, 110, "No IP address. Check the network.", &Font24_UTF8, WHITE, BLACK);
             } else {
                 ESP_LOGI("lunar", "The lunar calendar data is being obtained and saved through the network connection...");
-                Paint_DrawString_CN(10, 110, "正在联网获取并保存农历数据...", &Font24_UTF8, WHITE, BLACK);
+                Paint_DrawString_CN(10, 110, "Downloading lunar data...", &Font24_UTF8, WHITE, BLACK);
                 Refresh_page_clock();
                 fetch_and_save_lunar_month_to_sd(year_str, month_str, month_info);
                 fp = fopen(lunar_file, "r");
@@ -1309,7 +1320,7 @@ static void display_calendar_img(Time_data rtc_time, LunarInfo* month_info)
             }
         } else {
             ESP_LOGI("lunar", "There is no network connection and no local files. Calendar acquisition failed...");
-            Paint_DrawString_CN(10, 110, "无网络连接，也无本地文件，日历获取失败", &Font24_UTF8, WHITE, BLACK);
+            Paint_DrawString_CN(10, 110, "No network and no local file, calendar unavailable", &Font24_UTF8, WHITE, BLACK);
         }
     } 
 
@@ -1334,7 +1345,7 @@ static void display_calendar_img(Time_data rtc_time, LunarInfo* month_info)
         } else {
             ESP_LOGW("lunar", "The lunar information for that day does not exist");
             const char* fallback_week = (month_info && month_info[0].ncWeek[0]) ? month_info[0].ncWeek : "";
-            snprintf(lunar_days_str, sizeof(lunar_days_str), "当天农历信息不存在  %s", fallback_week);
+            snprintf(lunar_days_str, sizeof(lunar_days_str), "No lunar data for today  %s", fallback_week);
             Paint_DrawString_CN(280, 27, lunar_days_str, &Font16_UTF8, WHITE, BLACK);
         }
 
@@ -1346,7 +1357,7 @@ static void display_calendar_img(Time_data rtc_time, LunarInfo* month_info)
         int x_size = 0;
         int y_size = 0;
         uint16_t x_or = 0;
-        const char* week_str[] = {"星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"};
+        const char* week_str[] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
         if (month_info && month_info[0].ncWeek[0] != '\0') {
             for (size_t i = 0; i < 7; i++) {
                 if (strcmp(month_info[0].ncWeek, week_str[i]) == 0) {

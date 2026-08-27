@@ -83,11 +83,11 @@ void show_sdcard_all_info()
         uint64_t sd_physical_size = (uint64_t)card_host->csd.capacity * 512;
         ESP_LOGI("settings", "Physical capacity of SD card: %llu MB", sd_physical_size / (1024 * 1024));
 
-        snprintf(sdcard_str, sizeof(sdcard_str), " SD卡总容量: %llu MB", sd_physical_size / (1024 * 1024) );
+        snprintf(sdcard_str, sizeof(sdcard_str), " SD card total: %llu MB", sd_physical_size / (1024 * 1024) );
         Paint_DrawString_CN(25, 259, sdcard_str, &Font18_UTF8, WHITE, BLACK);
     } else {
         ESP_LOGI("settings", "The SD card is not initialized");
-        Paint_DrawString_CN(25, 259, " SD卡未初始化", &Font18_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(25, 259, " SD card not initialised", &Font18_UTF8, WHITE, BLACK);
     }
 
     FATFS* fs;
@@ -112,18 +112,18 @@ void show_sdcard_all_info()
         ESP_LOGI("settings", "Remaining capacity of the SD card partition: %llu MB", (unsigned long long)(sd_partition_free / (1024ULL * 1024ULL)));
         ESP_LOGI("settings", "The used capacity of the SD card partition: %llu MB", (unsigned long long)(sd_partition_used / (1024ULL * 1024ULL)));
 
-        snprintf(sdcard_str, sizeof(sdcard_str), " SD卡分区总容量: %llu MB", (unsigned long long)(sd_partition_total / (1024ULL * 1024ULL)) );
+        snprintf(sdcard_str, sizeof(sdcard_str), " Partition total: %llu MB", (unsigned long long)(sd_partition_total / (1024ULL * 1024ULL)) );
         Paint_DrawString_CN(25, 295, sdcard_str, &Font18_UTF8, WHITE, BLACK);
 
-        snprintf(sdcard_str, sizeof(sdcard_str), " SD卡分区已用容量: %llu MB", (unsigned long long)(sd_partition_used / (1024ULL * 1024ULL)) );
+        snprintf(sdcard_str, sizeof(sdcard_str), " Partition used: %llu MB", (unsigned long long)(sd_partition_used / (1024ULL * 1024ULL)) );
         Paint_DrawString_CN(25, 331, sdcard_str, &Font18_UTF8, WHITE, BLACK);
 
-        snprintf(sdcard_str, sizeof(sdcard_str), " SD卡分区剩余容量: %llu MB", (unsigned long long)(sd_partition_free / (1024ULL * 1024ULL)) );
+        snprintf(sdcard_str, sizeof(sdcard_str), " Partition free: %llu MB", (unsigned long long)(sd_partition_free / (1024ULL * 1024ULL)) );
         Paint_DrawString_CN(25, 367, sdcard_str, &Font18_UTF8, WHITE, BLACK);
 
     } else {
         ESP_LOGI("settings", "SD card partition information acquisition failed (f_getfree returns %d)", fres);
-        Paint_DrawString_CN(25, 295, " SD卡分区信息获取失败 ", &Font18_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(25, 295, " Could not read SD partition info ", &Font18_UTF8, WHITE, BLACK);
     }
 }
 
@@ -197,17 +197,17 @@ void SRAM_task(void) {
     ESP_LOGI("settings", "Total SRAM is available: %d", heap_caps_get_free_size(MALLOC_CAP_8BIT));
 
     Paint_DrawRectangle(0, 57, 480, 650, WHITE, DOT_PIXEL_1X1, DRAW_FILL_FULL);
-    Paint_DrawString_CN(10, 59, " 内存信息: ", &Font24_UTF8, BLACK, WHITE);
+    Paint_DrawString_CN(10, 59, " Memory: ", &Font24_UTF8, BLACK, WHITE);
     char SRAM[50] = {0};
-    snprintf(SRAM, sizeof(SRAM), " 片上SRAM可用: %d KB", heap_caps_get_free_size(MALLOC_CAP_INTERNAL)/1024 );
+    snprintf(SRAM, sizeof(SRAM), " On-chip SRAM free: %d KB", heap_caps_get_free_size(MALLOC_CAP_INTERNAL)/1024 );
     Paint_DrawString_CN(25, 105, SRAM, &Font18_UTF8, WHITE, BLACK);
-    snprintf(SRAM, sizeof(SRAM), " PSRAM可用: %d KB", heap_caps_get_free_size(MALLOC_CAP_SPIRAM)/1024 );
+    snprintf(SRAM, sizeof(SRAM), " PSRAM free: %d KB", heap_caps_get_free_size(MALLOC_CAP_SPIRAM)/1024 );
     Paint_DrawString_CN(25, 141, SRAM, &Font18_UTF8, WHITE, BLACK);
-    snprintf(SRAM, sizeof(SRAM), " 总SRAM可用: %d KB", heap_caps_get_free_size(MALLOC_CAP_8BIT)/1024 );
+    snprintf(SRAM, sizeof(SRAM), " Total SRAM free: %d KB", heap_caps_get_free_size(MALLOC_CAP_8BIT)/1024 );
     Paint_DrawString_CN(25, 177, SRAM, &Font18_UTF8, WHITE, BLACK);
 
 
-    Paint_DrawString_CN(10, 213, " TF卡信息: ", &Font24_UTF8, BLACK, WHITE);
+    Paint_DrawString_CN(10, 213, " SD card info: ", &Font24_UTF8, BLACK, WHITE);
     ESP_LOGI("settings", "Remaining space on the SD card");
     // Remaining space on the SD card
     uint64_t sd_total = 0, sd_free = 0;
@@ -319,7 +319,7 @@ static int Sleep_wake_settings()
     int last_minutes = -1;
 
     ESP_LOGI("home", "EPD_Sleep");
-    Paint_DrawString_CN(10, 557, " 已进入睡眠，确认键唤醒 ", &Font24_UTF8, BLACK, WHITE);
+    Paint_DrawString_CN(10, 557, " Asleep. Press Function to wake. ", &Font24_UTF8, BLACK, WHITE);
     Refresh_page_settings();
     EPD_Sleep();
     while(1)
@@ -348,7 +348,7 @@ static int Sleep_wake_settings()
             sleep_js++;
             if(sleep_js > Unattended_Time){
                 ESP_LOGI("home", "pwr_off");
-                Paint_DrawString_CN(10, 602, " 已关机 ", &Font24_UTF8, BLACK, WHITE);
+                Paint_DrawString_CN(10, 602, " Powered off ", &Font24_UTF8, BLACK, WHITE);
                 Refresh_page_settings();
                 axp_pwr_off();
             }
@@ -399,9 +399,9 @@ static void display_settings_init()
     Paint_DrawLine(2, 54, EPD_HEIGHT-2, 54, BLACK, DOT_PIXEL_2X2, LINE_STYLE_SOLID);
 
     Paint_DrawLine(2, 652, EPD_HEIGHT-2, 652, BLACK, DOT_PIXEL_2X2, LINE_STYLE_SOLID);
-    Paint_DrawString_CN(10, 657, " 内存信息 ", &Font24_UTF8, BLACK, WHITE);
-    Paint_DrawString_CN(10, 703, " 六轴信息 ", &Font24_UTF8, WHITE, BLACK);
-    Paint_DrawString_CN(10, 749, " 返回主菜单 ", &Font24_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, 657, " Memory ", &Font24_UTF8, BLACK, WHITE);
+    Paint_DrawString_CN(10, 703, " IMU ", &Font24_UTF8, WHITE, BLACK);
+    Paint_DrawString_CN(10, 749, " Back to menu ", &Font24_UTF8, WHITE, BLACK);
 
     Refresh_page_settings();
 }
@@ -410,17 +410,17 @@ static void display_settings_init()
 static void display_settings_option(int option)
 {
     if(option == 0){
-        Paint_DrawString_CN(10, 657, " 内存信息 ", &Font24_UTF8, BLACK, WHITE);
-        Paint_DrawString_CN(10, 703, " 六轴信息 ", &Font24_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(10, 749, " 返回主菜单 ", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 657, " Memory ", &Font24_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(10, 703, " IMU ", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 749, " Back to menu ", &Font24_UTF8, WHITE, BLACK);
     } else if(option == 1){
-        Paint_DrawString_CN(10, 657, " 内存信息 ", &Font24_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(10, 703, " 六轴信息 ", &Font24_UTF8, BLACK, WHITE);
-        Paint_DrawString_CN(10, 749, " 返回主菜单 ", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 657, " Memory ", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 703, " IMU ", &Font24_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(10, 749, " Back to menu ", &Font24_UTF8, WHITE, BLACK);
     } else if(option == 2){
-        Paint_DrawString_CN(10, 657, " 内存信息 ", &Font24_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(10, 703, " 六轴信息 ", &Font24_UTF8, WHITE, BLACK);
-        Paint_DrawString_CN(10, 749, " 返回主菜单 ", &Font24_UTF8, BLACK, WHITE);
+        Paint_DrawString_CN(10, 657, " Memory ", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 703, " IMU ", &Font24_UTF8, WHITE, BLACK);
+        Paint_DrawString_CN(10, 749, " Back to menu ", &Font24_UTF8, BLACK, WHITE);
     }
     Refresh_page_settings();
 }
