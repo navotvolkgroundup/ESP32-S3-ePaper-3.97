@@ -36,6 +36,7 @@
 #include "kids.h"
 #include "weather.h"
 #include "schedule.h"
+#include "daily_layout.h"
 #include "sd_json.h"
 #include "page_common.h"
 #include "epaper_port.h"
@@ -239,6 +240,10 @@ static void log_load(void)
 static time_t now_utc(void);      // defined with the entry points
 
 static weather_t s_wx;
+
+// A never-fetched cache is all-zero, and 0 degrees is a legitimate reading, so
+// presence is decided by the timestamp rather than by the temperature.
+static bool wx_have(void) { return s_wx.fetched_at != 0; }
 
 static void weather_load(void)
 {
@@ -732,18 +737,78 @@ static void draw_choice(int y, int i, const char *text, bool boxed)
 #endif
 }
 
+// Today's timetable, one line inside the utility band.
+static void draw_schedule_line(int y, int32_t civil_day)
+{
+    const char *line = schedule_for_day(&s_sched, civil_day);
+    if (!line[0]) return;
+    he_draw_line_rtl(CANVAS_W - MARGIN_X - DL_BAND_PAD, y, line);
+}
+
+// Temperature and condition, as text.
+//
+// ponytail: no icon. wmo_icon() names a bitmap under Weather_img, but those
+// live on the SD CARD at runtime (/sdcard/Weather_img/...), so drawing one
+// adds a card-missing failure mode to a zone whose whole job is to survive a
+// failed fetch. Text always draws. Wire the icon in when the card contents are
+// guaranteed -- wmo_icon() and its cross-artifact check are already there.
+static void draw_weather_line(int y)
+{
+    if (!wx_have()) return;
+
+    char line[64];
+    int n = snprintf(line, sizeof line, "%d.%dC  %s",
+                     s_wx.temp_x10 / 10, abs(s_wx.temp_x10 % 10),
+                     wmo_label(s_wx.wmo));
+    // hi/lo are a bonus: open-meteo omits them when the range has no value,
+    // and weather_parse leaves them zero rather than failing the whole read.
+    if ((s_wx.hi_x10 || s_wx.lo_x10) && n > 0 && n < (int)sizeof line)
+        snprintf(line + n, sizeof line - n, "   %d/%d",
+                 s_wx.hi_x10 / 10, s_wx.lo_x10 / 10);
+
+    Paint_DrawString_EN(MARGIN_X + DL_BAND_PAD, y + 8, line, &Font24,
+                        WHITE, BLACK);
+
+    // Say so when it is old. A confidently wrong temperature is worse than an
+    // obviously stale one, and the fetch fails silently by design.
+    if (weather_is_stale(&s_wx, (uint32_t)now_utc()))
+        Paint_DrawString_EN(CANVAS_W - MARGIN_X - DL_BAND_PAD - 48, y + 12,
+                            "old", &Font16, WHITE, BLACK);
+}
+
 static void draw_question(const riddle_nvs_t *st, const riddle_t *r)
 {
     canvas_begin();
     draw_header(st, r);
 
-    int top = Q_TOP;
     xSemaphoreTake(rtc_mutex, portMAX_DELAY);
     Time_data t = PCF85063_GetTime();
     xSemaphoreGive(rtc_mutex);
-    top = draw_birthday_banner(top, t.months, t.days);
-    top = draw_callout(top, st->day);
 
+    // Ask where everything goes, then draw. The reflow rules live in
+    // daily_layout.c, where all sixteen zone combinations are asserted on the
+    // host -- contriving a birthday, an empty weekend and a failed fetch on
+    // the board is how reflow goes unverified. (Eng review D8.)
+    daily_flags_t f;
+    f.schedule = schedule_for_day(&s_sched, st->day)[0] != 0;
+    f.weather  = wx_have();
+    f.callout  = kids_pick_callout(&s_kids, st->day) >= 0;
+    f.birthday = kids_birthday_on(&s_kids, t.months, t.days) >= 0;
+
+    daily_layout_t L;
+    daily_layout(&f, &L);
+
+    if (L.band_h > 0)
+        Paint_DrawRectangle(MARGIN_X, L.band_y, CANVAS_W - MARGIN_X,
+                            L.band_y + L.band_h, BLACK, DOT_PIXEL_1X1,
+                            DRAW_FILL_EMPTY);
+    if (L.schedule_y != DL_ABSENT) draw_schedule_line(L.schedule_y, st->day);
+    if (L.weather_y  != DL_ABSENT) draw_weather_line(L.weather_y);
+    if (L.birthday_y != DL_ABSENT) draw_birthday_banner(L.birthday_y,
+                                                        t.months, t.days);
+    if (L.callout_y  != DL_ABSENT) draw_callout(L.callout_y, st->day);
+
+    int top = L.riddle_top;
     int y = he_draw_wrapped(top, MARGIN_X, CANVAS_W - MARGIN_X, BODY_BOTTOM,
                             r->q, 5);
     if (y < 0) y = top + 5 * (HE_H - 6);         // clamped; drew what it could

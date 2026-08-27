@@ -688,6 +688,16 @@ static int test_daily_layout(void)
                 CHECK(L.weather_y + DL_LINE_H <= L.band_y + L.band_h);
             }
             CHECK(L.riddle_top >= L.band_y + L.band_h);
+            // Birthday and callout must clear the band too. Checking only
+            // riddle_top is not enough: the approach-C floor sits below any
+            // band this layout can produce, so it would satisfy that check
+            // even with the band's height ignored entirely -- which is
+            // exactly what a mutation deleting the band advance does, and it
+            // drops the banner on top of the timetable.
+            if (L.birthday_y != DL_ABSENT)
+                CHECK(L.birthday_y >= L.band_y + L.band_h);
+            if (L.callout_y != DL_ABSENT)
+                CHECK(L.callout_y >= L.band_y + L.band_h);
         }
 
         // The riddle keeps its floor whatever is stacked above it.
@@ -701,15 +711,13 @@ static int test_daily_layout(void)
         CHECK(L.riddle_top <= Lf.riddle_top);
     }
 
-    CHECK(Le.riddle_top < Lf.riddle_top);
-    CHECK(Le.riddle_h   > Lf.riddle_h);
+    CHECK(Le.riddle_top <= Lf.riddle_top);
+    CHECK(Le.riddle_h   >= Lf.riddle_h);
     CHECK(Le.band_h == 0);
 
-    // One zone must strictly push the riddle down, not merely not-up.
-    daily_flags_t sched_only = { true, false, false, false };
-    daily_layout_t Ls;
-    daily_layout(&sched_only, &Ls);
-    CHECK(Ls.riddle_top > Le.riddle_top);
+    // Approach C: the riddle sits in the lower two-thirds however few zones
+    // are present. Without the floor an empty page starts it around y=46.
+    CHECK(Le.riddle_top == DL_RIDDLE_TOP_MIN);
 
     // NULL flags behave as the empty page: the renderer calls this before
     // kids.json or the weather cache exist.

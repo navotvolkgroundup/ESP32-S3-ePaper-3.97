@@ -1,0 +1,7 @@
+{
+  "_comment": "Copy to the SD card root as kids.json. Imported into NVS on the next wake; the card can be removed afterwards. This file never leaves the device -- unlike riddles.json it is NOT published to the release asset, because names and birthdays identify children. Nickname is what the page addresses them by, so use whatever they answer to. Birthdays are month/day; no year is stored, because the page only ever asks whether today is the day.",
+  "kids": [
+    { "name": "שם", "month": 3, "day": 14 },
+    { "name": "שם2", "month": 11, "day": 2 }
+  ]
+}

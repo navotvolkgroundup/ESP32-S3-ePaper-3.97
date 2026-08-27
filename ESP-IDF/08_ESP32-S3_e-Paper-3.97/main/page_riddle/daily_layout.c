@@ -41,6 +41,10 @@ void daily_layout(const daily_flags_t *f, daily_layout_t *out)
         y += DL_LINE_H + DL_ZONE_GAP;
     }
 
+    // Never above the approach-C line, but never overlapping a zone either:
+    // whichever is lower wins, so a page full of zones still pushes down.
+    if (y < DL_RIDDLE_TOP_MIN) y = DL_RIDDLE_TOP_MIN;
+
     out->riddle_top = y;
     out->riddle_h   = DL_BODY_BOTTOM - y;
 }

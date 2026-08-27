@@ -41,6 +41,20 @@ extern "C" {
 // the day someone adds a fifth zone.
 #define DL_RIDDLE_MIN_H 420
 
+// APPROACH C, and the one number the wall decides.
+//
+// The design weights the riddle into the lower two-thirds because it assumes
+// the board hangs at ADULT eye level: the utility band is then at a grown-up's
+// natural gaze and the riddle at a child's. With few zones present the riddle
+// would otherwise start around y=150 -- the upper fifth -- which is approach B
+// wearing C's name.
+//
+// If the board ends up hung LOW, the advantage inverts and the adult is the
+// one looking down. Set this to 0 in that case: the riddle then follows the
+// utility zones directly and the layout becomes approach B. That is the whole
+// change, which is what the design meant by "a constant change if wrong".
+#define DL_RIDDLE_TOP_MIN 265           // 800/3, rounded
+
 typedef struct {
     bool schedule;      // today has subjects (weekends usually do not)
     bool weather;       // a cached reading exists, stale or not

@@ -298,6 +298,13 @@ void user_Task(void *arg)
     Time_data rtc_time = {0};
     int last_minutes = -1;
     
+    // Premise 1 of the daily-page design: the daily page is what a normal boot
+    // shows, and the eight-tile menu becomes somewhere you GO rather than what
+    // you see. Function double-click returns here, so the menu is one gesture
+    // away and nothing becomes unreachable -- which is the only reason this is
+    // safe to do (eng review D3).
+    page_riddle_show();
+
     esp_home(home_selection, Global_refresh);
     xSemaphoreTake(rtc_mutex, portMAX_DELAY);
     rtc_time = PCF85063_GetTime();
