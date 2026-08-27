@@ -19,6 +19,15 @@ void page_riddle_ambient(int reason);
 // is the only way to tell a working device from one whose alarm never armed.
 void page_riddle_diagnostics(void);
 
+// Waits for Function double-click, then reboots into the eight-tile menu.
+//
+// In riddle mode app_main never creates the menu task, so a board that draws
+// its page and then REFUSES to power off (USB attached, or the alarm did not
+// verify) sits there with every control dead. The Network tile is unreachable,
+// which means WiFi cannot be re-provisioned without a reflash. Never returns.
+// (Eng review D3.)
+void page_riddle_menu_escape(void);
+
 #ifdef __cplusplus
 }
 #endif

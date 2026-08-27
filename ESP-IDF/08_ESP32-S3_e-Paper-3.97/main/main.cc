@@ -459,7 +459,12 @@ static void riddle_mode_task(void *arg)
     page_riddle_ambient(sched_wake_slot());
     // Re-arm and power down. sched refuses if USB is attached or the alarm
     // does not verify, in which case the board stays awake on purpose.
-    sched_power_off_if_safe();
+    //
+    // "On purpose" used to mean "and then nothing": riddle mode never creates
+    // the menu task, so a board that stayed awake had every control dead and
+    // no route to the Network tile. Function double-click is that route now.
+    // (Eng review D3.)
+    if (!sched_power_off_if_safe()) page_riddle_menu_escape();
     vTaskDelete(NULL);
 }
 

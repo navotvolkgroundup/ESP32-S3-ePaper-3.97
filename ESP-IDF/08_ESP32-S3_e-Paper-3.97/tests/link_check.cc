@@ -25,6 +25,7 @@
 #include "weather.h"
 #include "schedule.h"
 #include "sd_json.h"
+#include "daily_layout.h"
 
 #include <cstdio>
 
@@ -61,6 +62,8 @@ __attribute__((used)) void *const volatile kRefs[] = {
 
     (void *)sdj_read,
     (void *)sdj_strerror,
+
+    (void *)daily_layout,
 };
 
 }  // namespace

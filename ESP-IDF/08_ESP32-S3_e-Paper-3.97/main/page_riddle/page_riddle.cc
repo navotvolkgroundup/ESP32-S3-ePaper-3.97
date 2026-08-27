@@ -42,6 +42,8 @@
 #include "GUI_Paint.h"
 #include "pcf85063_bsp.h"
 #include "sdcard_bsp.h"
+#include "esp_system.h"
+
 #include "axp_prot.h"
 #include "sched.h"
 
@@ -759,8 +761,8 @@ static void draw_question(const riddle_nvs_t *st, const riddle_t *r)
     // off is the kind of thing you discover the hard way.
     Paint_DrawString_EN(MARGIN_X, BODY_BOTTOM - 22,
                         sched_ambient_enabled()
-                            ? "auto: on  (Boot: off, hold: log)"
-                            : "auto: off (Boot: on, hold: log)",
+                            ? "auto: on  (Boot: off, hold: log, Fn x2: menu)"
+                            : "auto: off (Boot: on, hold: log, Fn x2: menu)",
                         &Font12, WHITE, BLACK);
 
     if (r->by[0]) {
@@ -1036,6 +1038,21 @@ void page_riddle_ambient(int reason)
         }
     }
     log_commit((uint32_t)now_utc(), st.idx);
+}
+
+void page_riddle_menu_escape(void)
+{
+    ESP_LOGW(TAG, "still awake with no menu task; Function double-click exits "
+                  "to the menu");
+    EPD_Sleep();
+    while (pc_button_wait(portMAX_DELAY) != PC_BTN_BACK) { }
+    EPD_Init();
+
+    // Leave riddle mode BEFORE restarting, or the next boot lands right back
+    // here with the same dead controls.
+    save_mode_enable_to_nvs(0);
+    pc_draw_message("Opening the menu...", "");
+    esp_restart();
 }
 
 void page_riddle_show(void)

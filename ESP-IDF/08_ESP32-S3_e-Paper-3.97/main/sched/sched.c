@@ -127,24 +127,25 @@ bool sched_arm_next(void)
 
 // ------------------------------------------------------------- power off ----
 
-void sched_power_off_if_safe(void)
+bool sched_power_off_if_safe(void)
 {
     if (!sched_ambient_enabled()) {
         ESP_LOGI(TAG, "ambient mode is off; staying awake");
-        return;
+        return false;
     }
     // A cabled board must stay reachable. Powering down here is what would
     // make the board un-flashable, and it is the one failure that makes every
     // other bug expensive to fix.
     if (get_usb_connected()) {
         ESP_LOGW(TAG, "USB attached; staying awake so the board stays flashable");
-        return;
+        return false;
     }
     if (!sched_arm_next()) {
         ESP_LOGE(TAG, "no verified alarm; staying awake rather than never "
                       "waking again");
-        return;
+        return false;
     }
     ESP_LOGI(TAG, "alarm verified, powering off");
     axp_pwr_off();
+    return true;                 // not reached; axp_pwr_off cuts the rail
 }

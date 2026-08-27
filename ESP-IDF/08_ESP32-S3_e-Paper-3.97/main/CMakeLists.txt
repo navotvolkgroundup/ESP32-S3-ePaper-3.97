@@ -17,6 +17,7 @@ idf_component_register(
         "page_riddle/weather.c"
         "page_riddle/schedule.c"
         "page_riddle/sd_json.c"
+        "page_riddle/daily_layout.c"
         "sched/sched.c"
         "page_common/page_common.cc"
         "page_riddle/page_riddle.cc"

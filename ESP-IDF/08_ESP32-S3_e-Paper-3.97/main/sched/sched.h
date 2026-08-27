@@ -71,7 +71,10 @@ bool sched_arm_next(void);
 // booting) and must be left alone.
 //
 // Returns only if it decided NOT to power off.
-void sched_power_off_if_safe(void);
+// Powers the board off when it is safe to. Returns false when it refused and
+// the board is therefore STILL RUNNING -- the caller has to decide what a live
+// board with no menu task should do. (Eng review D3.)
+bool sched_power_off_if_safe(void);
 
 #ifdef __cplusplus
 }

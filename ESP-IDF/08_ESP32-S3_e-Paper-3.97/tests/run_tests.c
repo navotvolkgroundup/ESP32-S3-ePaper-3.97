@@ -17,6 +17,7 @@
 #include "weather.h"
 #include "schedule.h"
 #include "sd_json.h"
+#include "daily_layout.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -626,6 +627,100 @@ static int test_schedule_parse(void)
     return 0;
 }
 
+// ----------------------------------------------------------- daily_layout ---
+//
+// Sixteen flag combinations, checked against the properties a reflow bug
+// breaks rather than against pixel numbers, which will be nudged against the
+// real panel. A loop rather than sixteen hand-written cases: the hand-written
+// set is exactly where the awkward combination goes missing.
+static int test_daily_layout(void)
+{
+    daily_flags_t empty = { false, false, false, false };
+    daily_flags_t full  = { true,  true,  true,  true  };
+    daily_layout_t Le, Lf;
+    daily_layout(&empty, &Le);
+    daily_layout(&full,  &Lf);
+
+    for (int bits = 0; bits < 16; bits++) {
+        daily_flags_t f;
+        f.schedule = (bits & 1) != 0;
+        f.weather  = (bits & 2) != 0;
+        f.callout  = (bits & 4) != 0;
+        f.birthday = (bits & 8) != 0;
+
+        daily_layout_t L;
+        daily_layout(&f, &L);
+
+        // Absent means absent: no coordinate, and no space consumed.
+        CHECK(f.schedule == (L.schedule_y != DL_ABSENT));
+        CHECK(f.weather  == (L.weather_y  != DL_ABSENT));
+        CHECK(f.callout  == (L.callout_y  != DL_ABSENT));
+        CHECK(f.birthday == (L.birthday_y != DL_ABSENT));
+
+        // Nothing may start above the header rule.
+        if (L.schedule_y != DL_ABSENT) CHECK(L.schedule_y > DL_HDR_RULE_Y);
+        if (L.weather_y  != DL_ABSENT) CHECK(L.weather_y  > DL_HDR_RULE_Y);
+        if (L.birthday_y != DL_ABSENT) CHECK(L.birthday_y > DL_HDR_RULE_Y);
+        if (L.callout_y  != DL_ABSENT) CHECK(L.callout_y  > DL_HDR_RULE_Y);
+
+        // Fixed order, no overlap: schedule, weather, birthday, callout, riddle.
+        if (L.schedule_y != DL_ABSENT && L.weather_y != DL_ABSENT)
+            CHECK(L.weather_y >= L.schedule_y + DL_LINE_H);
+        if (L.birthday_y != DL_ABSENT && L.callout_y != DL_ABSENT)
+            CHECK(L.callout_y > L.birthday_y);
+        if (L.callout_y != DL_ABSENT)
+            CHECK(L.riddle_top >= L.callout_y + DL_LINE_H);
+        if (L.birthday_y != DL_ABSENT && L.callout_y == DL_ABSENT)
+            CHECK(L.riddle_top > L.birthday_y);
+
+        // The band draws a border, so it exists only when it has contents --
+        // an empty box on a weekend morning reads as a fault, not a design.
+        if (!f.schedule && !f.weather) {
+            CHECK(L.band_h == 0);
+        } else {
+            CHECK(L.band_h > 0);
+            if (L.schedule_y != DL_ABSENT) {
+                CHECK(L.schedule_y >= L.band_y);
+                CHECK(L.schedule_y + DL_LINE_H <= L.band_y + L.band_h);
+            }
+            if (L.weather_y != DL_ABSENT) {
+                CHECK(L.weather_y >= L.band_y);
+                CHECK(L.weather_y + DL_LINE_H <= L.band_y + L.band_h);
+            }
+            CHECK(L.riddle_top >= L.band_y + L.band_h);
+        }
+
+        // The riddle keeps its floor whatever is stacked above it.
+        CHECK(L.riddle_h >= DL_RIDDLE_MIN_H);
+        CHECK(L.riddle_top + L.riddle_h == DL_BODY_BOTTOM);
+
+        // Direction: every page sits between the empty one and the full one.
+        // Without this the loop would pass just as happily if a zone moved the
+        // riddle UP.
+        CHECK(L.riddle_top >= Le.riddle_top);
+        CHECK(L.riddle_top <= Lf.riddle_top);
+    }
+
+    CHECK(Le.riddle_top < Lf.riddle_top);
+    CHECK(Le.riddle_h   > Lf.riddle_h);
+    CHECK(Le.band_h == 0);
+
+    // One zone must strictly push the riddle down, not merely not-up.
+    daily_flags_t sched_only = { true, false, false, false };
+    daily_layout_t Ls;
+    daily_layout(&sched_only, &Ls);
+    CHECK(Ls.riddle_top > Le.riddle_top);
+
+    // NULL flags behave as the empty page: the renderer calls this before
+    // kids.json or the weather cache exist.
+    daily_layout_t Ln;
+    daily_layout(NULL, &Ln);
+    CHECK(Ln.riddle_top == Le.riddle_top);
+    CHECK(Ln.band_h == 0);
+
+    return 0;
+}
+
 // ---------------------------------------------------------------- sd_json ---
 static int test_sd_json(void)
 {
@@ -685,6 +780,7 @@ int main(void)
         { "schedule_weekday",  test_schedule_weekday },
         { "schedule_parse",    test_schedule_parse },
         { "sd_json",           test_sd_json },
+        { "daily_layout",      test_daily_layout },
     };
     for (unsigned i = 0; i < sizeof tests / sizeof tests[0]; i++) {
         if (tests[i].fn()) {
