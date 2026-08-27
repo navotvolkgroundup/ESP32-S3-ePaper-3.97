@@ -114,6 +114,15 @@ pc_fetch_status_t pc_fetch_url(const char *url, char *buf, size_t cap,
     config.crt_bundle_attach = esp_crt_bundle_attach;   // feeds 301 off http
     config.timeout_ms        = 20000;
     config.user_agent        = "esp32-eink/1.0";
+    // The default header buffer is 512 bytes, and that is not enough for a
+    // GitHub release download. The first response is a 302 whose Location is a
+    // signed objects.githubusercontent.com URL -- an X-Amz-Signature query
+    // string that runs well past 512 on its own -- so esp_http_client logs
+    // "Out of buffer" and the perform fails with ESP_FAIL. It presents as
+    // "could not reach the server", which sends you looking at WiFi.
+    // Found on hardware 2026-08-27; the host tests cannot see this.
+    config.buffer_size       = 4096;
+    config.buffer_size_tx    = 2048;   // the redirected GET line is long too
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
     if (!client) return PC_FETCH_TRANSPORT;
