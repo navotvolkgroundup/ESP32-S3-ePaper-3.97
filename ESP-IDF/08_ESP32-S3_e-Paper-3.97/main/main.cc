@@ -525,6 +525,24 @@ extern "C" void app_main(void)
 
     // Initialize the power supply and perform mode judgment simultaneously
     axp_init();
+
+    // A CABLED BOARD MUST ALWAYS COME UP USABLE.
+    //
+    // The gate below powers the board off when it finds a non-zero boot mode
+    // with USB attached. sched_arm_next() legitimately leaves
+    // SCHED_MODE_RIDDLE in NVS, so plugging in a board that was in ambient
+    // mode gives you a board that powers itself off on every boot, before
+    // anything can clear the mode -- reachable only by holding BOOT for
+    // download mode. That is the single worst state this device can be in,
+    // because it is also the state in which you cannot flash your way out
+    // without knowing the trick.
+    //
+    // Clearing the mode BEFORE it is read makes that unreachable: USB present
+    // means menu-and-daily-page, always. Nothing is lost, because the ambient
+    // cycle cannot complete on USB anyway -- power-off is refused there to
+    // keep the board flashable.
+    if (get_usb_connected()) save_mode_enable_to_nvs(0);
+
     char mode = load_mode_enable_from_nvs();
     if(RTC_INT && mode!=0)
     {
